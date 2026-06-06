@@ -1,0 +1,28 @@
+# Blend AI — dependências Python
+# Instaladas dentro do Docker (sobre imagem base CUDA + torch). Ver Dockerfile.
+# torch / torchaudio vêm da imagem base; natten é instalado no Dockerfile (wheel por torch/cuda).
+
+# Áudio / separação / análise
+demucs            # separação de fontes (htdemucs_ft)
+allin1            # beat/downbeat/estrutura COM rótulos (requer natten — ver Dockerfile)
+essentia          # estimação de tom (perfil EDMA) — wheel Linux
+librosa           # análise de áudio / fallback de tom
+pyrubberband      # time-stretch / pitch-shift (requer binário rubberband-cli)
+soundfile
+numpy
+scipy
+
+# Rekordbox (ground truth de BPM/tom)
+pyrekordbox
+
+# Interface
+streamlit
+
+# Avaliação / estatística
+pandas
+scikit-learn
+mir_eval          # métricas MIR (beat/downbeat etc.)
+museval           # SDR (MUSDB18)
+
+# Dev / testes
+pytest

@@ -1,0 +1,19 @@
+services:
+  blend:
+    build: .
+    image: blend-ai
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./:/app
+      - ./data:/app/data
+      - ./output:/app/output
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    # App: docker compose up
+    # Shell: docker compose run --rm blend bash

@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vocal Studio — Conversão de Voz Cantada</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#FFFFFF; --surface:#F7F8FA; --surface-2:#EEF1F5; --border:#E5E7EB;
+  --text:#111827; --text-muted:#6B7280;
+  --accent:#6D5EF6; --accent-soft:#EEF0FE; --accent-700:#4F46E5;
+  --vocal:#3B82F6; --drums:#F59E0B; --bass:#EF4444; --other:#10B981;
+  --ok:#10B981; --warn:#F59E0B; --bad:#EF4444;
+  --radius:12px; --radius-sm:8px;
+  --shadow:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.04);
+  --shadow-md:0 6px 20px rgba(16,24,40,.08);
+  --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px;-webkit-font-smoothing:antialiased}
+body{font-family:"Inter",system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+
+/* ─── LAYOUT ─── */
+.container{max-width:1180px;margin:0 auto;padding:0 28px}
+
+/* ─── HEADER ─── */
+.site-header{border-bottom:1px solid var(--border);background:rgba(255,255,255,.96);backdrop-filter:blur(8px);position:sticky;top:0;z-index:100}
+.site-header .container{display:flex;align-items:center;gap:16px;padding-top:14px;padding-bottom:14px}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:34px;height:34px;background:var(--accent);border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.logo-icon svg{width:18px;height:18px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.logo-text{font-weight:700;font-size:1.05rem;color:var(--text)}
+.logo-tagline{font-size:.75rem;color:var(--text-muted);margin-top:1px}
+.header-chips{display:flex;gap:6px;flex-wrap:wrap;margin-left:4px}
+.chip{font-size:.72rem;font-weight:500;padding:3px 9px;border-radius:99px;background:var(--surface-2);color:var(--text-muted);letter-spacing:.01em}
+.chip.accent{background:var(--accent-soft);color:var(--accent)}
+.header-nav{margin-left:auto;display:flex;align-items:center;gap:6px}
+.nav-btn{font-size:.82rem;font-weight:500;color:var(--text-muted);text-decoration:none;padding:6px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg);white-space:nowrap;transition:background .15s,color .15s}
+.nav-btn:hover{background:var(--surface);color:var(--text)}
+.nav-btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.nav-btn.primary:hover{background:var(--accent-700)}
+
+/* ─── SECTIONS ─── */
+section{padding:56px 0}
+section+section{border-top:1px solid var(--border)}
+
+.eyebrow{font-size:.72rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:10px}
+h1{font-size:2.6rem;font-weight:700;line-height:1.18;letter-spacing:-.02em}
+h2{font-size:1.75rem;font-weight:700;letter-spacing:-.018em;line-height:1.25}
+h3{font-size:1.15rem;font-weight:600}
+p{color:var(--text-muted);line-height:1.7}
+.lead{font-size:1.12rem;color:var(--text-muted);max-width:680px;line-height:1.65}
+
+/* ─── HERO ─── */
+.hero{padding:64px 0 52px}
+.hero-badge{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:500;padding:5px 12px;border-radius:99px;border:1px solid var(--border);color:var(--text-muted);margin-bottom:24px}
+.hero-badge .dot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.hero h1 span{color:var(--accent)}
+.hero .lead{margin-top:18px}
+.hero-targets{display:flex;gap:10px;margin-top:28px;flex-wrap:wrap}
+.target-tag{display:flex;align-items:center;gap:7px;font-size:.82rem;font-weight:500;padding:7px 14px;border-radius:99px;background:var(--surface);border:1px solid var(--border);color:var(--text)}
+.target-tag .icon{font-size:1rem}
+
+/* ─── CARDS GRID ─── */
+.cards-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:32px}
+.card{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px;box-shadow:var(--shadow)}
+.card-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;font-size:1.3rem}
+.card-icon.red{background:#FEF2F2}
+.card-icon.amber{background:#FFFBEB}
+.card-icon.purple{background:var(--accent-soft)}
+.card h3{margin-bottom:6px;font-size:1rem}
+.card p{font-size:.88rem}
+
+/* ─── PIPELINE ─── */
+.pipeline{display:flex;align-items:stretch;gap:0;margin-top:36px;overflow-x:auto;padding-bottom:4px}
+.pipe-step{flex:1;min-width:140px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:16px 14px;box-shadow:var(--shadow);position:relative;text-align:center}
+.pipe-step:not(:last-child)::after{content:"→";position:absolute;right:-18px;top:50%;transform:translateY(-50%);font-size:1.1rem;color:var(--text-muted);font-weight:600;z-index:2;background:var(--bg);padding:0 2px}
+.pipe-step+.pipe-step{margin-left:20px}
+.pipe-num{font-size:.7rem;font-weight:700;font-family:var(--mono);color:var(--accent);background:var(--accent-soft);border-radius:99px;padding:2px 8px;display:inline-block;margin-bottom:8px}
+.pipe-step h4{font-size:.88rem;font-weight:600;color:var(--text);margin-bottom:4px}
+.pipe-step p{font-size:.76rem;color:var(--text-muted);line-height:1.45}
+.pipe-model{font-size:.7rem;font-family:var(--mono);color:var(--accent);background:var(--accent-soft);border-radius:4px;padding:2px 6px;margin-top:7px;display:inline-block}
+
+/* ─── DESIGNS SECTION ─── */
+.designs-header{margin-bottom:40px}
+.variation-label{display:inline-flex;align-items:center;gap:8px;font-size:.8rem;font-weight:600;padding:4px 12px;border-radius:99px;border:1px solid var(--border);color:var(--text-muted);margin-bottom:18px}
+.variation-label strong{color:var(--text)}
+
+/* ─── VARIATION A: WORKSPACE ─── */
+.workspace{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);overflow:hidden;margin-bottom:48px}
+.ws-titlebar{display:flex;align-items:center;gap:10px;padding:11px 16px;background:var(--surface);border-bottom:1px solid var(--border)}
+.ws-dots{display:flex;gap:5px}
+.ws-dot{width:11px;height:11px;border-radius:50%}
+.ws-dot.r{background:#FF5F57}
+.ws-dot.y{background:#FFBD2E}
+.ws-dot.g{background:#28CA41}
+.ws-title{font-size:.8rem;font-weight:500;color:var(--text-muted);margin-left:8px}
+.ws-body{display:grid;grid-template-columns:1fr 260px}
+.ws-main{padding:20px 20px 20px 20px;border-right:1px solid var(--border)}
+.ws-sidebar{padding:20px}
+
+/* WAVEFORM */
+.track-label{font-size:.73rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.track-label .dot{width:8px;height:8px;border-radius:50%}
+.track-label .dot.original{background:#9CA3AF}
+.track-label .dot.converted{background:var(--vocal)}
+.waveform-wrap{position:relative;margin-bottom:4px}
+.waveform{display:flex;align-items:center;gap:1.5px;height:56px;padding:0 2px}
+.waveform.original .bar{background:#C9D0D8}
+.waveform.converted .bar{background:var(--vocal);opacity:.85}
+.bar{width:3px;border-radius:99px;flex-shrink:0;transition:opacity .2s}
+.waveform:hover .bar{opacity:1}
+.pitch-line{position:absolute;bottom:0;left:0;right:0;height:24px;pointer-events:none}
+.waveform-tracks{margin-bottom:18px}
+.track-row{margin-bottom:12px}
+
+/* PROGRESS STEPS */
+.progress-steps{display:flex;align-items:center;gap:0;margin-bottom:18px}
+.pstep{flex:1;text-align:center;position:relative}
+.pstep:not(:last-child)::after{content:"";position:absolute;right:0;top:12px;width:100%;height:2px;background:var(--border);z-index:0}
+.pstep.done:not(:last-child)::after{background:var(--accent)}
+.pstep-dot{width:24px;height:24px;border-radius:50%;background:var(--surface-2);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;margin:0 auto 5px;font-size:.65rem;font-weight:700;position:relative;z-index:1;color:var(--text-muted)}
+.pstep.done .pstep-dot{background:var(--accent);border-color:var(--accent);color:#fff}
+.pstep.active .pstep-dot{background:#fff;border-color:var(--accent);color:var(--accent)}
+.pstep-label{font-size:.68rem;font-weight:500;color:var(--text-muted)}
+.pstep.done .pstep-label,.pstep.active .pstep-label{color:var(--text)}
+
+/* PLAYER */
+.player-compare{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:12px}
+.play-btn{width:32px;height:32px;border-radius:50%;border:1.5px solid var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;color:var(--text);transition:background .15s}
+.play-btn:hover{background:var(--surface-2)}
+.play-btn svg{width:12px;height:12px;fill:var(--text)}
+.player-label{font-size:.78rem;font-weight:500;flex:1}
+.xfade-wrap{display:flex;align-items:center;gap:8px}
+.xfade-label{font-size:.72rem;color:var(--text-muted)}
+.knob{width:36px;height:36px;border-radius:50%;background:conic-gradient(var(--accent) 0deg 270deg,var(--surface-2) 270deg 360deg);display:flex;align-items:center;justify-content:center;position:relative;flex-shrink:0}
+.knob::after{content:"";position:absolute;width:6px;height:6px;border-radius:50%;background:var(--bg);bottom:6px;left:50%;transform:translateX(-50%)}
+.btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 24px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);font-size:.88rem;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s;width:100%}
+.btn-primary:hover{background:var(--accent-700)}
+.btn-secondary{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 16px;background:#fff;color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:.82rem;font-weight:500;cursor:pointer;font-family:inherit;transition:background .15s}
+.btn-secondary:hover{background:var(--surface)}
+
+/* SIDEBAR PARAMS */
+.param-group{margin-bottom:18px}
+.param-label{display:flex;align-items:center;justify-content:space-between;font-size:.78rem;font-weight:500;color:var(--text);margin-bottom:7px}
+.param-val{font-family:var(--mono);font-size:.78rem;color:var(--accent);font-weight:600}
+.slider-track{width:100%;height:5px;border-radius:99px;background:var(--surface-2);position:relative;margin-bottom:2px}
+.slider-fill{height:100%;border-radius:99px;background:var(--accent);position:absolute;left:0;top:0}
+.slider-thumb{width:14px;height:14px;border-radius:50%;background:#fff;border:2px solid var(--accent);position:absolute;top:50%;transform:translateY(-50%);box-shadow:0 1px 4px rgba(0,0,0,.15);cursor:pointer}
+.slider-ticks{display:flex;justify-content:space-between;font-size:.64rem;font-family:var(--mono);color:var(--text-muted);margin-top:3px}
+.dropdown-mock{width:100%;background:#fff;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;font-size:.82rem;font-family:inherit;color:var(--text);display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+.dropdown-arrow{color:var(--text-muted);font-size:.7rem}
+.sidebar-divider{height:1px;background:var(--border);margin:14px 0}
+
+/* ─── VARIATION B ─── */
+.varb{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);overflow:hidden}
+.varb-titlebar{display:flex;align-items:center;gap:10px;padding:11px 16px;background:var(--surface);border-bottom:1px solid var(--border)}
+.varb-body{padding:20px 24px}
+.upload-zone{border:1.5px dashed var(--border);border-radius:var(--radius);padding:20px;text-align:center;background:var(--surface);margin-bottom:22px;display:flex;align-items:center;justify-content:center;gap:14px;cursor:pointer;transition:border-color .15s}
+.upload-zone:hover{border-color:var(--accent);background:var(--accent-soft)}
+.upload-icon{width:40px;height:40px;border-radius:10px;background:#fff;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0}
+.upload-text{text-align:left}
+.upload-text strong{font-size:.9rem;display:block}
+.upload-text span{font-size:.78rem;color:var(--text-muted)}
+.upload-file-loaded{border-style:solid;border-color:var(--ok);background:#F0FDF4}
+.upload-file-loaded .upload-icon{background:#DCFCE7;border-color:#BBF7D0}
+
+.section-eyebrow-sm{font-size:.7rem;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px}
+.voice-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+.voice-card{background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius);padding:14px;cursor:pointer;transition:border-color .15s,box-shadow .15s;position:relative}
+.voice-card:hover{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.voice-card.selected{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.voice-avatar{width:52px;height:52px;border-radius:10px;margin:0 auto 10px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700;color:#fff;flex-shrink:0}
+.vc-badges{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}
+.vc-badge{font-size:.64rem;font-weight:600;padding:2px 7px;border-radius:99px}
+.vc-badge.community{background:#EEF0FE;color:var(--accent)}
+.vc-badge.custom{background:#DCFCE7;color:#16A34A}
+.vc-badge.style{background:var(--surface-2);color:var(--text-muted)}
+.voice-name{font-size:.85rem;font-weight:600;text-align:center;margin-bottom:3px}
+.voice-meta{font-size:.7rem;font-family:var(--mono);color:var(--text-muted);text-align:center;margin-bottom:8px}
+.voice-play{width:28px;height:28px;border-radius:50%;border:1px solid var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;margin:0 auto;cursor:pointer;transition:background .15s}
+.voice-play:hover{background:var(--surface-2)}
+.voice-play svg{width:10px;height:10px;fill:var(--text)}
+.selected-check{position:absolute;top:8px;right:8px;width:18px;height:18px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center}
+.selected-check svg{width:10px;height:10px;fill:none;stroke:#fff;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+
+/* HISTORY */
+.history-list{display:flex;flex-direction:column;gap:8px}
+.history-item{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm)}
+.hi-status{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.hi-status.done{background:var(--ok)}
+.hi-status.proc{background:var(--warn)}
+.hi-mini-wf{display:flex;align-items:center;gap:1px;height:28px;flex-shrink:0}
+.hi-mini-wf .bar{width:2px;border-radius:99px}
+.hi-info{flex:1}
+.hi-name{font-size:.82rem;font-weight:600}
+.hi-sub{font-size:.72rem;color:var(--text-muted);font-family:var(--mono)}
+.hi-action{font-size:.78rem;font-weight:500;color:var(--accent);cursor:pointer;padding:5px 10px;border:1px solid var(--accent-soft);border-radius:var(--radius-sm);background:var(--accent-soft);white-space:nowrap}
+.hi-action:hover{background:#DDD9FD}
+.convert-bar{display:flex;align-items:center;gap:12px;padding:14px;background:var(--accent-soft);border:1px solid #DDD9FD;border-radius:var(--radius);margin-bottom:20px}
+.convert-bar .voice-name-sel{font-size:.88rem;font-weight:600;flex:1}
+.convert-bar .voice-name-sel span{font-size:.78rem;font-weight:400;color:var(--text-muted)}
+
+/* ─── METRICS / SCIENCE ─── */
+.metrics-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:32px}
+.metric-card{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:20px 22px;box-shadow:var(--shadow)}
+.metric-val{font-size:2rem;font-weight:700;font-family:var(--mono);color:var(--text);line-height:1;margin:8px 0 4px}
+.metric-val span{font-size:1rem;font-weight:400;color:var(--text-muted)}
+.metric-bar-wrap{height:7px;background:var(--surface-2);border-radius:99px;margin-top:10px;overflow:hidden}
+.metric-bar{height:100%;border-radius:99px}
+.challenges-list{margin-top:24px;display:flex;flex-direction:column;gap:10px}
+.challenge-item{display:flex;gap:12px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm)}
+.challenge-icon{font-size:1.1rem;flex-shrink:0;margin-top:1px}
+.challenge-text h4{font-size:.88rem;font-weight:600;margin-bottom:2px}
+.challenge-text p{font-size:.82rem;color:var(--text-muted)}
+.ethics-box{margin-top:28px;padding:18px 20px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:var(--radius);display:flex;gap:14px}
+.ethics-icon{font-size:1.3rem;flex-shrink:0;margin-top:2px}
+.ethics-text h4{font-size:.9rem;font-weight:600;color:#92400E;margin-bottom:4px}
+.ethics-text p{font-size:.83rem;color:#78350F;line-height:1.6}
+
+/* ─── FOOTER ─── */
+.site-footer{border-top:1px solid var(--border);padding:32px 0;margin-top:8px}
+.footer-inner{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.footer-nav{display:flex;gap:8px;flex-wrap:wrap}
+.footer-note{font-size:.75rem;color:var(--text-muted);text-align:right;line-height:1.5;max-width:440px}
+
+/* ─── UTILITY ─── */
+.mt8{margin-top:8px}
+.mt12{margin-top:12px}
+.mt16{margin-top:16px}
+.mt20{margin-top:20px}
+.mt28{margin-top:28px}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start;margin-top:32px}
+.tag-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.tag{font-size:.72rem;font-weight:500;padding:3px 8px;border-radius:99px;background:var(--surface-2);color:var(--text-muted)}
+
+/* ─── RESPONSIVE GUARD ─── */
+@media(max-width:900px){
+  .ws-body{grid-template-columns:1fr}
+  .ws-sidebar{border-top:1px solid var(--border);border-right:none}
+  .voice-grid{grid-template-columns:repeat(2,1fr)}
+  .cards-grid{grid-template-columns:1fr}
+  .metrics-grid{grid-template-columns:1fr}
+  .two-col{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════ HEADER -->
+<header class="site-header">
+  <div class="container">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+      </div>
+      <div>
+        <div class="logo-text">Vocal Studio</div>
+        <div class="logo-tagline">Troque o timbre de qualquer vocal</div>
+      </div>
+    </div>
+    <div class="header-chips">
+      <span class="chip accent">Voice Conversion (VC)</span>
+      <span class="chip">Produto</span>
+      <span class="chip">Vocais</span>
+    </div>
+    <nav class="header-nav">
+      <a href="index.html" class="nav-btn">← Capa</a>
+      <a href="index.html" class="nav-btn">‹ Anterior</a>
+      <a href="02-automashup.html" class="nav-btn primary">Próxima ›</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════ HERO -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-badge">
+      <span class="dot"></span>
+      Conceito de Produto · Processamento de Áudio e Voz
+    </div>
+    <h1>Covers e feats que<br><span>nunca existiram.</span></h1>
+    <p class="lead">
+      Vocal Studio usa Singing Voice Conversion (SVC) para substituir o timbre de qualquer vocal cantado em tempo real — preserve melodia, letra e emoção; troque apenas quem canta.
+    </p>
+    <div class="hero-targets">
+      <span class="target-tag"><span class="icon">🎛️</span> Produtores musicais</span>
+      <span class="target-tag"><span class="icon">🎬</span> Criadores de conteúdo</span>
+      <span class="target-tag"><span class="icon">🎵</span> Artistas independentes</span>
+      <span class="target-tag"><span class="icon">🎹</span> Compositores de demos</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ PROBLEMA -->
+<section>
+  <div class="container">
+    <p class="eyebrow">O Problema</p>
+    <h2>Gravar com a voz certa é caro, raro ou impossível</h2>
+    <p class="lead mt12">
+      A maioria das demos fica presa na voz de quem a gravou. Contratar um vocalista profissional custa caro; coordenar agendas é inviável; e as ferramentas atuais de conversão são cruas demais para uso criativo.
+    </p>
+    <div class="cards-grid">
+      <div class="card">
+        <div class="card-icon red">💸</div>
+        <h3>Custo e logística</h3>
+        <p>Gravar com um vocalista profissional envolve cachê, estúdio, revisões e viagens — inviável para produtores independentes e criadores de conteúdo trabalhando em demos rápidas.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon amber">🧩</div>
+        <h3>Feats e covers inexistentes</h3>
+        <p>Reimaginar uma faixa com a voz de outro artista — para fins criativos, educacionais ou de entretenimento — exige edição manual de formantes por horas sem garantia de naturalidade.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon purple">⚙️</div>
+        <h3>Ferramentas técnicas demais</h3>
+        <p>Soluções como RVC e so‑vits‑svc existem mas exigem Python, linha de comando, ajuste fino de parâmetros técnicos e horas de processamento — inacessíveis para o produtor médio.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ COMO FUNCIONA -->
+<section>
+  <div class="container">
+    <p class="eyebrow">Como Funciona</p>
+    <h2>Pipeline de conversão em 6 etapas</h2>
+    <p class="lead mt12">
+      Do upload ao export, todo o processo é orquestrado por modelos de estado da arte rodando no backend — o usuário só ouve o resultado.
+    </p>
+    <div class="pipeline">
+      <div class="pipe-step">
+        <div class="pipe-num">01</div>
+        <h4>Upload</h4>
+        <p>Música completa ou vocal isolado (WAV/MP3/FLAC)</p>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-num">02</div>
+        <h4>Separação Vocal</h4>
+        <p>Separa vocal do instrumental e outros stems</p>
+        <span class="pipe-model">Demucs HTDemucs</span>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-num">03</div>
+        <h4>Extração de Pitch F0</h4>
+        <p>Extrai curva de pitch contínua nota a nota</p>
+        <span class="pipe-model">RMVPE · CREPE</span>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-num">04</div>
+        <h4>Conversão de Timbre</h4>
+        <p>Mapeia timbres preservando F0, letra e emoção</p>
+        <span class="pipe-model">RVC · so‑vits‑svc</span>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-num">05</div>
+        <h4>Remixagem</h4>
+        <p>Re‑combina vocal convertido com o instrumental original</p>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-num">06</div>
+        <h4>Export</h4>
+        <p>Download em <span style="font-family:var(--mono)">44.1 kHz</span> ou <span style="font-family:var(--mono)">48 kHz</span>, 24‑bit</p>
+      </div>
+    </div>
+    <div class="tag-row mt20">
+      <span class="tag">Demucs HTDemucs v4</span>
+      <span class="tag">RMVPE</span>
+      <span class="tag">CREPE</span>
+      <span class="tag">Harvest (pYIN)</span>
+      <span class="tag">Retrieval-based Voice Conversion (RVC)</span>
+      <span class="tag">so‑vits‑svc 4.0</span>
+      <span class="tag">44.1 / 48 kHz · 24‑bit</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ DESIGNS -->
+<section>
+  <div class="container">
+    <p class="eyebrow">Designs Possíveis</p>
+    <h2>Duas propostas de interface</h2>
+    <p class="lead mt12">Duas abordagens para o mesmo problema — uma focada em controle técnico, outra em descoberta e velocidade.</p>
+
+    <!-- ── VARIAÇÃO A ── -->
+    <div class="mt28">
+      <div class="variation-label"><strong>Variação A</strong> — Conversion Workspace</div>
+      <p style="font-size:.88rem;color:var(--text-muted);margin-bottom:18px;max-width:680px">Interface de produção com waveform dual-track, curva de pitch F0 e painel de parâmetros avançados. Para produtores que querem controle granular sobre cada aspecto da conversão.</p>
+
+      <div class="workspace">
+        <!-- titlebar -->
+        <div class="ws-titlebar">
+          <div class="ws-dots"><div class="ws-dot r"></div><div class="ws-dot y"></div><div class="ws-dot g"></div></div>
+          <span class="ws-title">vocal_studio — demo_faixa_01.wav</span>
+          <div style="margin-left:auto;display:flex;gap:8px">
+            <button class="btn-secondary" style="padding:5px 11px;font-size:.75rem">Arquivo</button>
+            <button class="btn-secondary" style="padding:5px 11px;font-size:.75rem">Exportar</button>
+          </div>
+        </div>
+
+        <div class="ws-body">
+          <!-- main area -->
+          <div class="ws-main">
+
+            <!-- progress steps -->
+            <div style="margin-bottom:20px">
+              <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:10px">Progresso da conversão</div>
+              <div class="progress-steps">
+                <div class="pstep done">
+                  <div class="pstep-dot">✓</div>
+                  <div class="pstep-label">1 Separar vocal</div>
+                </div>
+                <div class="pstep done">
+                  <div class="pstep-dot">✓</div>
+                  <div class="pstep-label">2 Extrair pitch</div>
+                </div>
+                <div class="pstep active">
+                  <div class="pstep-dot">3</div>
+                  <div class="pstep-label">3 Converter</div>
+                </div>
+                <div class="pstep">
+                  <div class="pstep-dot">4</div>
+                  <div class="pstep-label">4 Remixar</div>
+                </div>
+              </div>
+              <div style="margin-top:8px;height:5px;background:var(--surface-2);border-radius:99px;overflow:hidden">
+                <div style="width:62%;height:100%;background:linear-gradient(90deg,var(--accent) 0%,#9B8FF9 100%);border-radius:99px;transition:width .4s"></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:.7rem;font-family:var(--mono);color:var(--text-muted)"><span>0%</span><span style="color:var(--accent);font-weight:600">62% — Convertendo timbre…</span><span>100%</span></div>
+            </div>
+
+            <!-- waveform tracks -->
+            <div class="waveform-tracks">
+              <div class="track-row">
+                <div class="track-label">
+                  <span class="dot original"></span>
+                  Original · <span style="font-family:var(--mono);font-size:.7rem;color:var(--text-muted)">demo_faixa_01.wav</span>
+                </div>
+                <div class="waveform-wrap">
+                  <div class="waveform original" id="wf-orig"></div>
+                </div>
+              </div>
+              <div class="track-row">
+                <div class="track-label">
+                  <span class="dot converted"></span>
+                  Convertido · <span style="font-family:var(--mono);font-size:.7rem;color:var(--text-muted)">Aurora — Pop feminino</span>
+                  <span style="margin-left:auto;font-size:.7rem;background:var(--accent-soft);color:var(--accent);border-radius:99px;padding:2px 8px;font-weight:600">Em progresso</span>
+                </div>
+                <div class="waveform-wrap">
+                  <div class="waveform converted" id="wf-conv"></div>
+                  <!-- Pitch / F0 curve overlay -->
+                  <svg class="pitch-line" viewBox="0 0 600 24" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M0,18 C20,16 35,10 55,8 C70,6 80,14 100,12 C118,10 130,5 148,7 C165,9 175,14 192,11 C208,8 222,4 240,6 C258,8 268,16 285,13 C300,10 314,5 330,8 C346,11 358,17 374,14 C390,11 402,6 418,8 C434,10 446,15 462,12 C476,9 490,4 506,6 C522,8 534,13 550,10 C564,7 578,3 600,5" stroke="#F59E0B" stroke-width="1.5" fill="none" opacity="0.85" stroke-linecap="round"/>
+                    <path d="M0,18 C20,16 35,10 55,8 C70,6 80,14 100,12 C118,10 130,5 148,7 C165,9 175,14 192,11" stroke="#F59E0B" stroke-width="1.5" fill="none" opacity="0.3" stroke-dasharray="3,2" stroke-linecap="round"/>
+                  </svg>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+                  <div style="width:8px;height:2px;background:#F59E0B;border-radius:1px"></div>
+                  <span style="font-size:.68rem;color:var(--text-muted)">Curva F0 (pitch fundamental) — extraída via RMVPE</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- player compare -->
+            <div class="player-compare">
+              <button class="play-btn" title="Reproduzir original">
+                <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              </button>
+              <span class="player-label">Original</span>
+              <div style="width:80px;height:5px;background:var(--surface-2);border-radius:99px;position:relative">
+                <div style="width:40%;height:100%;background:#9CA3AF;border-radius:99px"></div>
+                <div style="width:12px;height:12px;border-radius:50%;background:#fff;border:2px solid #9CA3AF;position:absolute;top:50%;left:38%;transform:translateY(-50%);box-shadow:var(--shadow)"></div>
+              </div>
+              <div class="xfade-wrap">
+                <span class="xfade-label">A ⇄ B</span>
+                <div class="knob" title="Crossfade Original ⇄ Convertido"></div>
+              </div>
+              <div style="width:80px;height:5px;background:var(--surface-2);border-radius:99px;position:relative">
+                <div style="width:55%;height:100%;background:var(--vocal);border-radius:99px;opacity:.6"></div>
+                <div style="width:12px;height:12px;border-radius:50%;background:#fff;border:2px solid var(--vocal);position:absolute;top:50%;left:52%;transform:translateY(-50%);box-shadow:var(--shadow)"></div>
+              </div>
+              <button class="play-btn" title="Reproduzir convertido" style="border-color:var(--vocal)">
+                <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3" fill="var(--vocal)"/></svg>
+              </button>
+              <span class="player-label" style="color:var(--vocal)">Convertido</span>
+              <span style="font-size:.72rem;font-family:var(--mono);color:var(--text-muted);margin-left:auto">02:31 / 03:47</span>
+            </div>
+
+          </div>
+
+          <!-- sidebar -->
+          <div class="ws-sidebar">
+            <div style="font-size:.8rem;font-weight:600;color:var(--text);margin-bottom:16px;display:flex;align-items:center;justify-content:space-between">
+              Parâmetros
+              <span style="font-size:.68rem;font-weight:400;color:var(--text-muted)">RVC v2</span>
+            </div>
+
+            <div class="param-group">
+              <div class="param-label">Pitch shift <span class="param-val">+2 st</span></div>
+              <div class="slider-track">
+                <div class="slider-fill" style="width:58.3%"></div>
+                <div class="slider-thumb" style="left:calc(58.3% - 7px)"></div>
+              </div>
+              <div class="slider-ticks"><span>−12</span><span>0</span><span>+12</span></div>
+            </div>
+
+            <div class="param-group">
+              <div class="param-label" style="margin-bottom:8px">Método F0</div>
+              <div class="dropdown-mock">
+                <span>RMVPE</span>
+                <span class="dropdown-arrow">▾</span>
+              </div>
+              <div style="margin-top:6px;display:flex;gap:5px">
+                <button class="btn-secondary" style="flex:1;padding:5px 0;font-size:.72rem;border-radius:6px;background:var(--accent-soft);border-color:var(--accent);color:var(--accent)">RMVPE</button>
+                <button class="btn-secondary" style="flex:1;padding:5px 0;font-size:.72px;border-radius:6px">CREPE</button>
+                <button class="btn-secondary" style="flex:1;padding:5px 0;font-size:.72rem;border-radius:6px">Harvest</button>
+              </div>
+            </div>
+
+            <div class="sidebar-divider"></div>
+
+            <div class="param-group">
+              <div class="param-label">Index rate <span class="param-val">0.75</span></div>
+              <div class="slider-track">
+                <div class="slider-fill" style="width:75%"></div>
+                <div class="slider-thumb" style="left:calc(75% - 7px)"></div>
+              </div>
+              <div class="slider-ticks"><span>0.00</span><span>0.50</span><span>1.00</span></div>
+            </div>
+
+            <div class="param-group">
+              <div class="param-label">Protect vocals <span class="param-val">0.33</span></div>
+              <div class="slider-track">
+                <div class="slider-fill" style="width:33%"></div>
+                <div class="slider-thumb" style="left:calc(33% - 7px)"></div>
+              </div>
+              <div class="slider-ticks"><span>0.00</span><span>0.25</span><span>0.50</span></div>
+            </div>
+
+            <div class="param-group">
+              <div class="param-label">Mix volume <span class="param-val">−1.2 dB</span></div>
+              <div class="slider-track">
+                <div class="slider-fill" style="width:84%"></div>
+                <div class="slider-thumb" style="left:calc(84% - 7px)"></div>
+              </div>
+              <div class="slider-ticks"><span>−12</span><span>0</span><span>+6</span></div>
+            </div>
+
+            <div class="sidebar-divider"></div>
+
+            <div style="display:flex;gap:6px;margin-bottom:10px">
+              <div style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;text-align:center">
+                <div style="font-size:.65rem;color:var(--text-muted);margin-bottom:3px">BPM</div>
+                <div style="font-family:var(--mono);font-size:.95rem;font-weight:700">128</div>
+              </div>
+              <div style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;text-align:center">
+                <div style="font-size:.65rem;color:var(--text-muted);margin-bottom:3px">Key</div>
+                <div style="font-family:var(--mono);font-size:.95rem;font-weight:700">8A</div>
+              </div>
+              <div style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;text-align:center">
+                <div style="font-size:.65rem;color:var(--text-muted);margin-bottom:3px">kHz</div>
+                <div style="font-family:var(--mono);font-size:.95rem;font-weight:700">44.1</div>
+              </div>
+            </div>
+
+            <button class="btn-primary">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Converter
+            </button>
+            <button class="btn-secondary" style="width:100%;margin-top:8px">Exportar resultado</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── VARIAÇÃO B ── -->
+    <div>
+      <div class="variation-label"><strong>Variação B</strong> — Voice Model Browser + Conversão Rápida</div>
+      <p style="font-size:.88rem;color:var(--text-muted);margin-bottom:18px;max-width:680px">Navegue em uma biblioteca de modelos de voz, escolha em 1 clique e acompanhe o histórico de conversões. Para criadores que priorizam velocidade e descoberta.</p>
+
+      <div class="varb">
+        <div class="varb-titlebar">
+          <div class="ws-dots"><div class="ws-dot r"></div><div class="ws-dot y"></div><div class="ws-dot g"></div></div>
+          <span class="ws-title">Vocal Studio — Model Browser</span>
+        </div>
+        <div class="varb-body">
+
+          <!-- upload zone -->
+          <div class="upload-zone upload-file-loaded">
+            <div class="upload-icon">🎵</div>
+            <div class="upload-text">
+              <strong>demo_faixa_01.wav</strong>
+              <span>3:47 · 44.1 kHz · Estéreo · 24 MB — clique para trocar</span>
+            </div>
+            <div style="margin-left:auto;display:flex;gap:8px">
+              <span style="font-size:.72rem;padding:4px 10px;background:#DCFCE7;color:#16A34A;border-radius:99px;font-weight:600">✓ Carregado</span>
+              <button class="btn-secondary" style="font-size:.78rem;padding:6px 12px">Trocar arquivo</button>
+            </div>
+          </div>
+
+          <!-- convert bar (after selection) -->
+          <div class="convert-bar">
+            <div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#A78BFA,#6D5EF6);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0">🎤</div>
+            <div class="voice-name-sel">Aurora — Pop feminino <span>selecionada · v2 · 300 épocas</span></div>
+            <button class="btn-primary" style="width:auto;padding:9px 22px;font-size:.85rem">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Converter agora
+            </button>
+          </div>
+
+          <!-- voice grid -->
+          <div class="section-eyebrow-sm">Modelos de voz disponíveis</div>
+          <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+            <button class="btn-secondary" style="font-size:.76rem;padding:5px 12px;border-radius:99px;background:var(--accent);color:#fff;border-color:var(--accent)">Todos</button>
+            <button class="btn-secondary" style="font-size:.76rem;padding:5px 12px;border-radius:99px">Pop</button>
+            <button class="btn-secondary" style="font-size:.76rem;padding:5px 12px;border-radius:99px">R&amp;B / Soul</button>
+            <button class="btn-secondary" style="font-size:.76rem;padding:5px 12px;border-radius:99px">Eletrônico</button>
+            <button class="btn-secondary" style="font-size:.76rem;padding:5px 12px;border-radius:99px">MPB</button>
+            <button class="btn-secondary" style="font-size:.76rem;padding:5px 12px;border-radius:99px">Custom</button>
+          </div>
+
+          <div class="voice-grid">
+            <!-- card 1 selected -->
+            <div class="voice-card selected">
+              <div class="selected-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+              <div class="voice-avatar" style="background:linear-gradient(135deg,#A78BFA,#6D5EF6)">A</div>
+              <div class="vc-badges">
+                <span class="vc-badge community">Community</span>
+                <span class="vc-badge style">Pop</span>
+              </div>
+              <div class="voice-name">Aurora</div>
+              <div class="voice-meta">Pop feminino · v2 · 300e</div>
+              <button class="voice-play"><svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+            </div>
+            <!-- card 2 -->
+            <div class="voice-card">
+              <div class="voice-avatar" style="background:linear-gradient(135deg,#34D399,#10B981)">L</div>
+              <div class="vc-badges">
+                <span class="vc-badge custom">Custom</span>
+                <span class="vc-badge style">R&amp;B</span>
+              </div>
+              <div class="voice-name">Lorenzo</div>
+              <div class="voice-meta">R&amp;B masculino · v2 · 500e</div>
+              <button class="voice-play"><svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+            </div>
+            <!-- card 3 -->
+            <div class="voice-card">
+              <div class="voice-avatar" style="background:linear-gradient(135deg,#FBBF24,#F59E0B)">S</div>
+              <div class="vc-badges">
+                <span class="vc-badge community">Community</span>
+                <span class="vc-badge style">MPB</span>
+              </div>
+              <div class="voice-name">Sofia</div>
+              <div class="voice-meta">MPB / Bossa · v1 · 200e</div>
+              <button class="voice-play"><svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+            </div>
+            <!-- card 4 -->
+            <div class="voice-card">
+              <div class="voice-avatar" style="background:linear-gradient(135deg,#F87171,#EF4444)">K</div>
+              <div class="vc-badges">
+                <span class="vc-badge custom">Custom</span>
+                <span class="vc-badge style">Eletrônico</span>
+              </div>
+              <div class="voice-name">Kairo</div>
+              <div class="voice-meta">Eletrônico · v2 · 400e</div>
+              <button class="voice-play"><svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+            </div>
+            <!-- card 5 -->
+            <div class="voice-card">
+              <div class="voice-avatar" style="background:linear-gradient(135deg,#60A5FA,#3B82F6)">V</div>
+              <div class="vc-badges">
+                <span class="vc-badge community">Community</span>
+                <span class="vc-badge style">Pop</span>
+                <span class="vc-badge style">Indie</span>
+              </div>
+              <div class="voice-name">Valentina</div>
+              <div class="voice-meta">Indie pop · v2 · 250e</div>
+              <button class="voice-play"><svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+            </div>
+            <!-- card 6 -->
+            <div class="voice-card">
+              <div class="voice-avatar" style="background:linear-gradient(135deg,#A78BFA,#8B5CF6)">M</div>
+              <div class="vc-badges">
+                <span class="vc-badge custom">Custom</span>
+                <span class="vc-badge style">Gospel</span>
+              </div>
+              <div class="voice-name">Marcus</div>
+              <div class="voice-meta">Gospel · v1 · 180e</div>
+              <button class="voice-play"><svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+            </div>
+            <!-- card 7 -->
+            <div class="voice-card">
+              <div class="voice-avatar" style="background:linear-gradient(135deg,#6EE7B7,#34D399)">I</div>
+              <div class="vc-badges">
+                <span class="vc-badge community">Community</span>
+                <span class="vc-badge style">Sertanejo</span>
+              </div>
+              <div class="voice-name">Isabela</div>
+              <div class="voice-meta">Sertanejo · v2 · 320e</div>
+              <button class="voice-play"><svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+            </div>
+            <!-- card 8 — add custom -->
+            <div class="voice-card" style="border-style:dashed;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:160px;cursor:pointer;background:var(--surface)">
+              <div style="font-size:1.8rem;color:var(--text-muted);margin-bottom:8px">+</div>
+              <div style="font-size:.82rem;font-weight:600;color:var(--text-muted)">Treinar modelo</div>
+              <div style="font-size:.72rem;color:var(--text-muted);margin-top:3px">Envie suas amostras</div>
+            </div>
+          </div>
+
+          <!-- history -->
+          <div class="section-eyebrow-sm" style="margin-top:24px">Conversões recentes</div>
+          <div class="history-list">
+
+            <div class="history-item">
+              <div class="hi-status done"></div>
+              <div class="hi-mini-wf" id="mwf1">
+                <!-- mini waveform bars -->
+              </div>
+              <div class="hi-info">
+                <div class="hi-name">demo_faixa_01.wav → Aurora</div>
+                <div class="hi-sub">concluído · 44.1 kHz · 3:47 · há 2 min</div>
+              </div>
+              <a href="#" class="hi-action">Baixar</a>
+            </div>
+
+            <div class="history-item">
+              <div class="hi-status proc"></div>
+              <div class="hi-mini-wf" id="mwf2"></div>
+              <div class="hi-info">
+                <div class="hi-name">beat_draft_02.mp3 → Lorenzo</div>
+                <div class="hi-sub" style="color:var(--warn)">convertendo… 38% — Extraindo pitch</div>
+              </div>
+              <span style="font-size:.78rem;font-family:var(--mono);color:var(--warn);padding:5px 10px;border:1px solid #FDE68A;border-radius:var(--radius-sm);background:#FFFBEB">38%</span>
+            </div>
+
+            <div class="history-item">
+              <div class="hi-status done"></div>
+              <div class="hi-mini-wf" id="mwf3"></div>
+              <div class="hi-info">
+                <div class="hi-name">cover_trecho.wav → Sofia</div>
+                <div class="hi-sub">concluído · 48 kHz · 1:22 · há 15 min</div>
+              </div>
+              <a href="#" class="hi-action">Baixar</a>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ CIÊNCIA -->
+<section>
+  <div class="container">
+    <p class="eyebrow">Desafio & Avaliação Científica</p>
+    <h2>Por que canto é mais difícil que fala</h2>
+
+    <div class="two-col">
+      <div>
+        <p>A conversão de voz cantada (SVC) é consideravelmente mais complexa que a conversão de fala convencional. O canto apresenta características únicas que desafiam os modelos atuais:</p>
+        <div class="challenges-list">
+          <div class="challenge-item">
+            <span class="challenge-icon">🎵</span>
+            <div class="challenge-text">
+              <h4>Pitch contínuo e controlado</h4>
+              <p>Na fala, o pitch varia livremente; no canto, deve seguir notas específicas com precisão de centésimos de semitom — e o modelo não pode desviar sem quebrar a melodia.</p>
+            </div>
+          </div>
+          <div class="challenge-item">
+            <span class="challenge-icon">🌊</span>
+            <div class="challenge-text">
+              <h4>Vibrato e ornamentos expressivos</h4>
+              <p>Vibratos, glissandos, melismas e outras ornamentações são marcas do estilo vocal. Modelos genéricos tendem a suavizá-los ou corrompê-los na conversão de timbre.</p>
+            </div>
+          </div>
+          <div class="challenge-item">
+            <span class="challenge-icon">⏱️</span>
+            <div class="challenge-text">
+              <h4>Notas longas e sustentadas</h4>
+              <p>Silabas sustentadas por vários segundos amplificam artefatos de conversão — um pequeno ruído de 5 ms torna-se audível quando espalhado por 3 s de nota sustentada.</p>
+            </div>
+          </div>
+          <div class="challenge-item">
+            <span class="challenge-icon">🔊</span>
+            <div class="challenge-text">
+              <h4>Naturalidade vs. similaridade de timbre</h4>
+              <p>Aumentar a similaridade de timbre (fazer soar mais como a voz-alvo) frequentemente reduz a naturalidade (artefatos, metalicidade). Esse trade-off é fronteira de pesquisa ativa.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:16px">Métricas de avaliação</div>
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="eyebrow" style="margin-bottom:0">MOS Naturalidade</div>
+            <div class="metric-val">3.8<span> / 5.0</span></div>
+            <div style="font-size:.78rem;color:var(--text-muted)">Mean Opinion Score — avaliação humana perceptual da naturalidade do vocal convertido</div>
+            <div class="metric-bar-wrap"><div class="metric-bar" style="width:76%;background:var(--ok)"></div></div>
+          </div>
+          <div class="metric-card">
+            <div class="eyebrow" style="margin-bottom:0">MOS Similaridade</div>
+            <div class="metric-val">3.5<span> / 5.0</span></div>
+            <div style="font-size:.78rem;color:var(--text-muted)">Quão similar o timbre convertido soa à voz-alvo, segundo avaliação humana comparativa</div>
+            <div class="metric-bar-wrap"><div class="metric-bar" style="width:70%;background:var(--vocal)"></div></div>
+          </div>
+          <div class="metric-card">
+            <div class="eyebrow" style="margin-bottom:0">SI-SDR Separação</div>
+            <div class="metric-val">12.4<span> dB</span></div>
+            <div style="font-size:.78rem;color:var(--text-muted)">Scale-Invariant Signal-to-Distortion Ratio da separação vocal pelo Demucs — qualidade do stem</div>
+            <div class="metric-bar-wrap"><div class="metric-bar" style="width:78%;background:var(--accent)"></div></div>
+          </div>
+          <div class="metric-card">
+            <div class="eyebrow" style="margin-bottom:0">RMSE de F0</div>
+            <div class="metric-val">18<span> cents</span></div>
+            <div style="font-size:.78rem;color:var(--text-muted)">Erro quadrático médio da curva de pitch — quanto a melodia se desvia após a conversão</div>
+            <div class="metric-bar-wrap"><div class="metric-bar" style="width:85%;background:var(--drums)"></div></div>
+          </div>
+        </div>
+
+        <div style="margin-top:16px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:.82rem;color:var(--text-muted)">
+          <strong style="color:var(--text)">Teste A/B cego:</strong> avaliadores sem conhecimento prévio comparam pares Original × Convertido em condições controladas de escuta, atribuindo notas de naturalidade e similaridade de timbre. Valores acima são fictícios para fins ilustrativos.
+        </div>
+      </div>
+    </div>
+
+    <div class="ethics-box">
+      <span class="ethics-icon">⚖️</span>
+      <div class="ethics-text">
+        <h4>Nota ética — direitos de voz e consentimento</h4>
+        <p>
+          A conversão de voz cantada levanta questões relevantes de ética e direito: (1) <strong>consentimento da voz-alvo</strong> — o modelo de voz de um artista só deve ser criado e distribuído com sua autorização explícita; (2) <strong>direitos autorais</strong> — covers gerados por IA podem infringir direitos de intérpretes e compositores conforme a legislação vigente; (3) <strong>transparência</strong> — conteúdo gerado deve ser claramente identificado como IA para não enganar ouvintes; (4) <strong>proteção de identidade vocal</strong> — vozes são consideradas atributo de personalidade e sua reprodução não autorizada pode configurar violação de direito de imagem em diversas jurisdições. Este produto, caso implementado, precisaria incorporar mecanismos de verificação de consentimento e termos de uso claros.
+        </p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ FOOTER -->
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-nav">
+        <a href="index.html" class="nav-btn">← Capa</a>
+        <a href="index.html" class="nav-btn">‹ Anterior</a>
+        <a href="02-automashup.html" class="nav-btn primary">Próxima › AutoMashup</a>
+      </div>
+      <div class="footer-note">
+        Mockup ilustrativo — Trabalho final PAV · formas de onda e valores são fictícios.<br>
+        Processamento de Áudio e Voz · 2025
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+// Gera waveforms realistas com barras de alturas variadas
+function makeWaveform(id, count, minH, maxH, color) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  // Padrão de envelope: silêncio nos extremos, pico no meio, ondulado
+  for (let i = 0; i < count; i++) {
+    const t = i / count;
+    const env = Math.sin(Math.PI * t) * 0.7 + 0.3;
+    // ruído musical: ondas de baixa frequência + variação rápida
+    const lf = Math.sin(t * Math.PI * 6) * 0.3;
+    const mf = Math.sin(t * Math.PI * 18) * 0.2;
+    const hf = (Math.random() - 0.5) * 0.4;
+    const raw = Math.abs(env + lf + mf + hf);
+    const h = Math.max(minH, Math.min(maxH, raw * maxH));
+    const bar = document.createElement('div');
+    bar.className = 'bar';
+    bar.style.height = h + 'px';
+    el.appendChild(bar);
+  }
+}
+
+function makeMiniWf(id, count, color) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  for (let i = 0; i < count; i++) {
+    const t = i / count;
+    const env = Math.sin(Math.PI * t) * 0.8 + 0.2;
+    const h = Math.max(3, Math.abs(env + (Math.random()-0.5)*0.5) * 22);
+    const bar = document.createElement('div');
+    bar.className = 'bar';
+    bar.style.height = h + 'px';
+    bar.style.background = color;
+    bar.style.width = '2px';
+    bar.style.borderRadius = '99px';
+    el.appendChild(bar);
+  }
+}
+
+makeWaveform('wf-orig', 170, 3, 46, '#C9D0D8');
+makeWaveform('wf-conv', 170, 3, 46, '#3B82F6');
+makeMiniWf('mwf1', 32, '#10B981');
+makeMiniWf('mwf2', 32, '#F59E0B');
+makeMiniWf('mwf3', 32, '#10B981');
+</script>
+
+</body>
+</html>

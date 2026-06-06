@@ -1,0 +1,33 @@
+# Áudio (pesado + comercial) — não versionar
+*.mp3
+*.wav
+*.flac
+*.aiff
+*.m4a
+*.mp4
+*.stem
+
+# Saídas, modelos e checkpoints baixados
+output/
+models/
+*.th
+*.ckpt
+*.pt
+
+# Benchmarks MIR (baixados, grandes)
+data/benchmarks/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.pytest_cache/
+*.egg-info/
+
+# Editores / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
