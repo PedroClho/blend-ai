@@ -17,6 +17,9 @@ models/
 # Benchmarks MIR (baixados, grandes)
 data/benchmarks/
 
+# Pasta de trabalho do Rekordbox (áudio + export); o ground truth derivado vai em data/rekordbox/
+playlist_atv/
+
 # Python
 __pycache__/
 *.py[cod]
