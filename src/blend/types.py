@@ -27,6 +27,24 @@ class TrackAnalysis:
 
 
 @dataclass
+class ScoreCompat:
+    """Score de compatibilidade entre duas faixas (H2) — saída de `compatibility_score`.
+
+    Expõe o índice final **e** o breakdown por componente: o P4 (`blend-eval`)
+    correlaciona cada componente separadamente com as notas do painel (Spearman
+    por componente), além do `total`.
+    """
+
+    total: float  # [0,1] — índice preditivo final
+    harmonico: float  # [0,1] — componente harmônico (distância Camelot mapeada)
+    tempo: float  # [0,1] — componente de tempo (stretch após half/double)
+    energia: float | None  # [0,1] — energia/estrutura; None quando não injetada
+    camelot_dist: int  # passos crus na roda (-1 = tom ausente); diagnóstico/Spearman
+    bpm_ratio: float  # fator de stretch escolhido (diagnóstico, consistente com o alinhamento)
+    pesos: dict = field(default_factory=dict)  # pesos efetivos usados (após redistribuição)
+
+
+@dataclass
 class AlignmentPlan:
     """Como o vocal (A) entra sobre a base (B) — saída do alinhamento (P2)."""
 
