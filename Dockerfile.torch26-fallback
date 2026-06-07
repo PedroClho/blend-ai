@@ -1,0 +1,40 @@
+# Blend AI — FALLBACK validado (torch 2.6) — SEM allin1
+#
+# Esta imagem foi BUILDADA e VALIDADA em 2026-06-07: GPU RTX 2060 acessível no
+# container; Demucs, Essentia, madmom, librosa e Rubber Band importam e rodam.
+# NÃO inclui o allin1 utilizável: o allin1 usa a API antiga do NATTEN
+# (natten2dav), incompatível com o NATTEN 0.17.5 desta stack — por isso o
+# `Dockerfile` principal usa a stack legada torch 2.0 (ver lá).
+#
+# Use este fallback se a stack torch 2.0 + allin1 não buildar e você precisar
+# destravar o pipeline sem a estrutura rotulada (beat/downbeat via madmom):
+#   docker build -f Dockerfile.torch26-fallback -t blend-ai .
+
+FROM pytorch/pytorch:2.6.0-cuda12.6-cudnn9-runtime
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app/src \
+    PIP_NO_CACHE_DIR=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg rubberband-cli git build-essential \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+RUN pip install "numpy<2" cython
+
+# NATTEN 0.17.5 + CUDA 12.6 (+cu126) — casa com torch 2.6; importa OK.
+# (Instalado para completar a imagem, mas o allin1 não consegue usá-lo — ver topo.)
+RUN pip install natten==0.17.5 -f https://whl.natten.org/
+
+RUN pip install "git+https://github.com/CPJKU/madmom"
+
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+COPY . .
+
+EXPOSE 8501
+CMD ["streamlit", "run", "app/app.py", "--server.address=0.0.0.0"]
