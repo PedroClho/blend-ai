@@ -104,8 +104,7 @@ Integração entre módulos e decisões de arquitetura: em conjunto.
 
 ## Datasets
 
-- **Demonstração:** coletânea própria de funks com vocal proeminente (lado A) + tech house/house instrumentais (lado B).
-  _Já coletado (2026-06-05):_ 11 bases tech house/house (extended/original mix, selos reais — Solid Grooves, Diynamic, EMPIRE…) na pasta `inter - tech 2/`. **Falta o lado A:** eletrofunks BR com vocal proeminente. Material comercial → ok para experimento educacional interno; ressalva ao publicar/distribuir mashups.
+- **Demonstração / experimento MVP:** **tech house × tech house** — vocal de uma faixa sobre a base de outra, com **BPM próximo (1–3 de diferença)**, usando as **11 faixas já coletadas** em `data/raw/bases/`. Controla a variável tempo e isola o efeito da estrutura para testar H1 de forma limpa. O caso-guia do produto **funk × house** (lado A = eletrofunk BR, a coletar) fica como **demo/visão e teste de robustez** (gap grande de BPM — ver `specs/alinhamento-estrutura-aware.md`). Faixas comerciais (selos reais — Solid Grooves, Diynamic, EMPIRE…) → ok para uso educacional interno; ressalva ao publicar/distribuir.
 - **Ground truth (validar a análise):** MUSDB18 (separação — SDR), GiantSteps (tom/tempo),
   Harmonix Set (downbeats/estrutura), GTZAN (gênero/tempo).
 - **Subjetivo:** painel de DJs e ouvintes, avaliação às cegas, escala Likert 1–5.

@@ -35,3 +35,4 @@ class AlignmentPlan:
     pitch_shift_semitones: float  # transposição do vocal
     vocal_offset: float  # quando o vocal começa, em segundos da base
     mode: str = "proposto"  # 'baseline' | 'proposto'
+    nivel_fallback: int = 0  # 0 = caminho principal; 1–4 = degraus do fallback (auditoria P4)
