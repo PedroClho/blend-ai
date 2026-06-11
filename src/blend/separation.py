@@ -1,10 +1,13 @@
-"""Separação de fontes com Demucs v4 (htdemucs_ft)."""
+"""Separação de fontes com Demucs v4 (htdemucs)."""
 from __future__ import annotations
 
 import numpy as np
 
 _MODEL = None
-_MODEL_NAME = "htdemucs_ft"
+# htdemucs (modelo único) em vez de htdemucs_ft (bag de 4 modelos): ~4x menos
+# RAM/VRAM. Essencial na RTX 2060 (6 GB) + WSL (~8 GB): o _ft estourava a memória
+# e derrubava o daemon do Docker. Voltar p/ "htdemucs_ft" só com mais recursos.
+_MODEL_NAME = "htdemucs"
 
 
 def _get_model():
