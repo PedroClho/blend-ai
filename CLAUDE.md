@@ -73,7 +73,7 @@ Onde há "/" eram alternativas em aberto; ver decisões travadas abaixo.
 - **Síntese:** Rubber Band via `pyrubberband` (time-stretch + pitch-shift).
 - **Ambiente:** **Docker** com imagem base CUDA, única para os 4 — resolve a build do NATTEN (dependência do `allin1`) e garante reprodutibilidade. GPU via `nvidia-container-toolkit` (Docker Desktop + backend WSL2 no Windows).
 - **Tom → Camelot:** detecção automática com **Essentia (perfil EDMA)** no produto; **tom do Rekordbox usado como ground truth de validação (silver standard)** no domínio-alvo (eletrofunk + house). Atalho permitido nas primeiras semanas: usar o tom do Rekordbox como _input_ até a detecção automática ficar pronta. Extração via `rekordbox.xml` (atributo `Tonality`) ou `pyrekordbox`.
-- **Interface (P3):** **Streamlit** para o MVP — sobe em horas e mantém o foco no motor de áudio (o cerne de PAV). Os mockups HTML em `designs/` ficam como norte visual / trabalho futuro.
+- **Interface (P3, reconstruída 2026-06-12):** **SPA Vite + React + TS + Tailwind v4** (`web/`) sobre **API FastAPI** (`api/server.py`, jobs assíncronos com polling — geração leva ~1-2 min na GPU). Design "instrumento de estúdio" derivado do mockup (claro/minimal, Unbounded + Instrument Sans + IBM Plex Mono, cores por stem, timeline de estrutura como assinatura). Build: `cd web && npm run build` (dist/ servido estático pelo FastAPI); dev: `npm run dev` (proxy p/ :8000). Streamlit (`app/app.py`) ficou como UI legada. Next.js foi avaliado e descartado: sem necessidade de SSR/SEO, e a SPA estática mantém 1 container só.
 
 ## Escopo
 

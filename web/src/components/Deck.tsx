@@ -110,6 +110,7 @@ export function Deck({
         <input
           ref={inputRef}
           type="file"
+          data-deck={letra}
           accept={ACEITOS.join(",")}
           className="hidden"
           onChange={(e) => aceitar(e.target.files)}
