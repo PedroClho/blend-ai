@@ -1,12 +1,12 @@
 # Blend AI — subir a interface:  docker compose up
 #
-# Usa a imagem validada `blend-ai:torch26` (torch 2.6 + GPU RTX 2060, sem allin1).
-# Quando a stack com allin1 (torch 2.0) for buildada a partir do Dockerfile,
-# trocar para `image: blend-ai` e reativar `build: .`.
+# Usa `blend-ai:torch20` (torch 2.0 + cuda11.7 + NATTEN FORCE_CUDA + allin1 —
+# validada 2026-06-12 com GPU e estrutura rotulada). Rebuild: docker compose build.
+# Fallback sem allin1 (torch 2.6): blend-ai:torch26 / Dockerfile.torch26-fallback.
 services:
   blend:
-    image: blend-ai:torch26
-    # build: .            # Dockerfile = stack torch 2.0 + allin1 (a buildar; ver Dockerfile)
+    image: blend-ai:torch20
+    build: .
     ports:
       - "8501:8501"
     volumes:

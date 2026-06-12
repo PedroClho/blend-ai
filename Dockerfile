@@ -34,11 +34,12 @@ WORKDIR /app
 RUN pip install "numpy<1.24" cython
 
 # NATTEN 0.14.x — única faixa com a API `natten2dav` que o allin1 importa.
-# --no-binary força COMPILAR do source (casa com torch 2.0.1+cu117 da imagem),
-# evitando o ABI mismatch de wheel. Se falhar, tentar o wheel pré-compilado:
-#   pip install natten==0.14.6 -f https://shi-labs.com/natten/wheels/
+# --no-binary força COMPILAR do source (casa com torch 2.0.1+cu117 da imagem);
+# o índice de wheels antigo (shi-labs.com) saiu do ar — só resta compilar.
+# FORCE_CUDA=1: sem GPU visível durante o build, o setup decidia CPU-only e o
+# allin1 morria em runtime com "NATTEN is not compiled with CUDA!".
 # MAX_JOBS=2: nvcc paralelo demais estoura a RAM do WSL (~8 GB) e mata o build.
-RUN MAX_JOBS=2 pip install natten==0.14.6 --no-binary natten
+RUN FORCE_CUDA=1 MAX_JOBS=2 pip install natten==0.14.6 --no-binary natten
 
 # madmom do git (beat/downbeat; usado pelo allin1)
 RUN pip install "git+https://github.com/CPJKU/madmom"

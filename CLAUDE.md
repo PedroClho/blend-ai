@@ -124,7 +124,7 @@ Integração entre módulos e decisões de arquitetura: em conjunto.
 - `instrucoes.md` — enunciado oficial do trabalho.
 - `designs/` — mockups dos 4 conceitos do brainstorm + capa + `proposta-automashup.html` (escopo/hipóteses/pipeline/equipe/cronograma — fonte de verdade do escopo).
 - `src/blend/`, `app/`, `eval/`, `tests/`, `specs/`, `.claude/agents/` — esqueleto de código + agentes (stubs com `NotImplementedError`).
-- **Ambiente Docker (validado 2026-06-07):** GPU **NVIDIA RTX 2060 acessível no container** — `torch 2.6 + cuda12.6`, com Demucs/Essentia/madmom/librosa/Rubber Band importando. O **`allin1` é o ponto frágil**: usa a API antiga do NATTEN (`natten2dav`), que só existe em NATTEN < 0.15 → exige stack legada `torch 2.0 + cuda11.7 + natten 0.14.6`. O `Dockerfile` está **preparado nessa stack legada mas ainda NÃO buildado** (build longo). Fallback validado (torch 2.6, GPU OK, sem allin1): `Dockerfile.torch26-fallback`.
+- **Ambiente Docker (allin1 validado 2026-06-12):** imagem principal **`blend-ai:torch20`** (`torch 2.0.1 + cuda11.7 + NATTEN 0.14.6 compilado com FORCE_CUDA=1 + numpy<1.24 resolvido junto com o requirements`) — **allin1 rodando na RTX 2060 com seções rotuladas** (intro/chorus/verse/outro) → alinhamento proposto opera em `nivel_fallback=0`. Armadilhas documentadas no `Dockerfile` (FORCE_CUDA, MAX_JOBS=2, pin do numpy na mesma resolução do pip). Fallback sem allin1 (torch 2.6 + cuda12.6, GPU OK): `blend-ai:torch26` / `Dockerfile.torch26-fallback`. Separação usa `htdemucs` (modelo único): o `_ft` estoura os 16 GB de RAM da máquina.
 - Próximos passos (Semana 1): validar Docker/GPU, implementar separação+análise (P1) nas 11 bases, montar dataset e baseline ingênuo.
 
 ## Convenções
