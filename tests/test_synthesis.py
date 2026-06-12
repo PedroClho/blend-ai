@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 import numpy as np  # noqa: E402
 
-from blend.pipeline import _inicio_atividade_vocal  # noqa: E402
+from blend.pipeline import _melhor_janela_vocal  # noqa: E402
 from blend.synthesis import _recortar, render  # noqa: E402
 from blend.types import AlignmentPlan, Segment  # noqa: E402
 
@@ -57,26 +57,37 @@ def test_recortar_fora_da_faixa_nao_quebra():
 
 
 # --------------------------------------------------------------------------- #
-# _inicio_atividade_vocal
+# _melhor_janela_vocal
 # --------------------------------------------------------------------------- #
-def test_atividade_detecta_inicio_apos_silencio():
-    t = np.arange(3 * SR) / SR
-    seno = 0.5 * np.sin(2 * np.pi * 440 * t).astype(np.float32)
-    voc = np.concatenate([np.zeros(2 * SR, dtype=np.float32), seno])[np.newaxis, :]
-    ini = _inicio_atividade_vocal(voc, SR)
-    assert ini is not None
-    assert 1.8 <= ini <= 2.2
+def test_janela_ignora_bleed_e_acha_o_vocal():
+    # 120s: vazamento fraco o tempo todo + vocal forte só em [60, 80)s
+    rng = np.random.default_rng(7)
+    y = (0.01 * rng.standard_normal(120 * SR)).astype(np.float32)
+    t = np.arange(20 * SR) / SR
+    y[60 * SR : 80 * SR] += (0.5 * np.sin(2 * np.pi * 440 * t)).astype(np.float32)
+    voc = y[np.newaxis, :]
+    downbeats = [float(d) for d in range(0, 120, 2)]
+    ini = _melhor_janela_vocal(voc, SR, dur_s=15.0, downbeats=downbeats)
+    assert 56.0 <= ini <= 62.0  # janela cai no trecho cantado (snap em downbeat)
 
 
-def test_atividade_silencio_total_retorna_none():
-    voc = np.zeros((1, 2 * SR), dtype=np.float32)
-    assert _inicio_atividade_vocal(voc, SR) is None
+def test_janela_silencio_retorna_zero():
+    voc = np.zeros((1, 10 * SR), dtype=np.float32)
+    assert _melhor_janela_vocal(voc, SR, dur_s=5.0, downbeats=[]) == 0.0
 
 
-def test_atividade_ignora_estalo_curto():
-    voc = np.zeros((1, 3 * SR), dtype=np.float32)
-    voc[0, SR : SR + SR // 10] = 0.8  # estalo de 100 ms < min_dur_s=400 ms
-    assert _inicio_atividade_vocal(voc, SR) is None
+def test_janela_dur_maior_que_faixa():
+    voc = np.ones((1, 5 * SR), dtype=np.float32)
+    ini = _melhor_janela_vocal(voc, SR, dur_s=60.0, downbeats=[0.0])
+    assert ini == 0.0
+
+
+def test_janela_ancora_no_downbeat_anterior():
+    y = np.zeros(60 * SR, dtype=np.float32)
+    y[30 * SR :] = 0.5
+    voc = y[np.newaxis, :]
+    ini = _melhor_janela_vocal(voc, SR, dur_s=10.0, downbeats=[0.0, 28.6, 31.2])
+    assert ini == 28.6  # argmax ~30s → downbeat anterior
 
 
 # --------------------------------------------------------------------------- #

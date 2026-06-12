@@ -23,6 +23,11 @@ def analyze(
     try:
         return _analyze_allin1(path, sr)
     except Exception:
+        import sys
+        import traceback
+
+        print(f"[analysis] allin1 falhou em {path!r}; fallback madmom:", file=sys.stderr)
+        traceback.print_exc()
         return _analyze_madmom(path, sr)
 
 

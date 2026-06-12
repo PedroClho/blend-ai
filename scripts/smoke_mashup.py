@@ -49,6 +49,11 @@ def main() -> None:
         f"secao='{res.plan.target_segment.label}' "
         f"[{res.plan.target_segment.start:.1f}–{res.plan.target_segment.end:.1f}s]"
     )
+    print(
+        f"[smoke] recorte: vocal_in={res.plan.vocal_in:.2f}s "
+        f"dur={res.plan.vocal_dur if res.plan.vocal_dur is None else round(res.plan.vocal_dur, 2)}s "
+        f"pitch={res.plan.pitch_shift_semitones:+.1f}st"
+    )
     print(f"[smoke] mashup shape={res.mashup.shape} sr={res.sr}")
 
 

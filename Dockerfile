@@ -44,8 +44,11 @@ RUN MAX_JOBS=2 pip install natten==0.14.6 --no-binary natten
 RUN pip install "git+https://github.com/CPJKU/madmom"
 
 # Demais dependências (allin1 puxa demucs/librosa/hydra; essentia, rubberband...)
+# "numpy<1.24" JUNTO na mesma resolução: senão o pip faz upgrade do numpy p/ 2.x
+# (via scipy/streamlit) e quebra a ponte torch↔numpy do torch 2.0
+# ("RuntimeError: Numpy is not available" em runtime).
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install -r requirements.txt "numpy<1.24"
 
 COPY . .
 
