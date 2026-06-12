@@ -37,7 +37,8 @@ RUN pip install "numpy<1.24" cython
 # --no-binary força COMPILAR do source (casa com torch 2.0.1+cu117 da imagem),
 # evitando o ABI mismatch de wheel. Se falhar, tentar o wheel pré-compilado:
 #   pip install natten==0.14.6 -f https://shi-labs.com/natten/wheels/
-RUN pip install natten==0.14.6 --no-binary natten
+# MAX_JOBS=2: nvcc paralelo demais estoura a RAM do WSL (~8 GB) e mata o build.
+RUN MAX_JOBS=2 pip install natten==0.14.6 --no-binary natten
 
 # madmom do git (beat/downbeat; usado pelo allin1)
 RUN pip install "git+https://github.com/CPJKU/madmom"

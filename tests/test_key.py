@@ -8,7 +8,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 import pytest  # noqa: E402
 
-from blend.key import _tonality_to_camelot, to_camelot  # noqa: E402
+from blend.key import (  # noqa: E402
+    _tonality_to_camelot,
+    pitch_shift_para_compatibilizar,
+    to_camelot,
+)
 
 
 @pytest.mark.parametrize(
@@ -55,3 +59,33 @@ def test_to_camelot_nota_invalida():
 )
 def test_tonality_rekordbox(tonality, esperado):
     assert _tonality_to_camelot(tonality) == esperado
+
+
+@pytest.mark.parametrize(
+    "vocal,base,esperado",
+    [
+        ("8A", "8A", 0.0),  # mesma célula
+        ("8A", "9A", 0.0),  # vizinho na roda
+        ("9A", "8A", 0.0),
+        ("8A", "8B", 0.0),  # relativa
+        ("1A", "5A", -1.0),  # 1A−1st = 6A, vizinho de 5A (menor |s|)
+        ("6A", "8A", 2.0),  # 6A+2st = 8A (mesma célula)
+        ("12A", "1A", 0.0),  # vizinhos na fronteira 12↔1
+        ("1B", "12B", 0.0),
+    ],
+)
+def test_pitch_shift_para_compatibilizar(vocal, base, esperado):
+    assert pitch_shift_para_compatibilizar(vocal, base) == esperado
+
+
+def test_pitch_shift_resultado_e_minimo():
+    # qualquer par: |shift| nunca passa de 3 semitons (sempre há alvo a ≤3 st)
+    for nv in range(1, 13):
+        for nb in range(1, 13):
+            s = pitch_shift_para_compatibilizar(f"{nv}A", f"{nb}A")
+            assert abs(s) <= 3.0
+
+
+def test_pitch_shift_camelot_invalido():
+    with pytest.raises(ValueError):
+        pitch_shift_para_compatibilizar("13A", "8A")

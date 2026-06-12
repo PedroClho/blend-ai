@@ -54,3 +54,7 @@ class AlignmentPlan:
     vocal_offset: float  # quando o vocal começa, em segundos da base
     mode: str = "proposto"  # 'baseline' | 'proposto'
     nivel_fallback: int = 0  # 0 = caminho principal; 1–4 = degraus do fallback (auditoria P4)
+    # Recorte do vocal no tempo de A (antes do stretch) — preenchido pelo pipeline,
+    # que detecta atividade vocal no stem e limita a duração à seção alvo.
+    vocal_in: float = 0.0  # onde o recorte começa, em segundos de A
+    vocal_dur: float | None = None  # duração do recorte em segundos de A; None = até o fim

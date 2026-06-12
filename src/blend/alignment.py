@@ -443,12 +443,19 @@ def align(
     params = params or ParamsSecao()
 
     bpm_ratio = _escolher_bpm_ratio(base.bpm, vocal.bpm)
-    # pitch_shift fica em 0.0 por enquanto.
-    # TODO P2/H2: derivar a transposição da distância Camelot entre
-    # vocal.key_camelot e base.key_camelot, respeitando camelot_transpose_threshold
-    # (regra H3 — vocais declamados toleram salto). Depende do score de
-    # compatibilidade (compatibility.py), fora do escopo desta spec.
+    # Transposição mínima p/ compatibilidade harmônica (mesma p/ baseline e
+    # proposto — teste justo de H1). Sem tom estimado (ou inválido) → 0.0.
+    # TODO H3: permitir pular a transposição p/ vocais declamados (funk).
     pitch_shift = 0.0
+    if vocal.key_camelot and base.key_camelot:
+        try:
+            from .key import pitch_shift_para_compatibilizar
+
+            pitch_shift = pitch_shift_para_compatibilizar(
+                vocal.key_camelot, base.key_camelot
+            )
+        except ValueError:
+            pitch_shift = 0.0
 
     if mode == "baseline":
         offset = base.downbeats[0] if base.downbeats else 0.0

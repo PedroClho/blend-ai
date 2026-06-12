@@ -23,6 +23,49 @@ _PC_MINOR = {9: "8A", 4: "9A", 11: "10A", 6: "11A", 1: "12A", 8: "1A",
 _MINOR_TOKENS = {"MINOR", "MIN", "M", "AEOLIAN"}
 _MAJOR_TOKENS = {"MAJOR", "MAJ", "", "IONIAN"}
 
+# Camelot → pitch class (inverso das tabelas acima)
+_CAMELOT_TO_PC = {
+    **{v: k for k, v in _PC_MAJOR.items()},
+    **{v: k for k, v in _PC_MINOR.items()},
+}
+
+
+def _parse_camelot(cam: str) -> tuple[int, str]:
+    """'8A' → (8, 'A'). Levanta ValueError se inválido."""
+    up = (cam or "").strip().upper().replace(" ", "")
+    if len(up) >= 2 and up[:-1].isdigit() and up[-1] in ("A", "B"):
+        num = int(up[:-1])
+        if 1 <= num <= 12:
+            return num, up[-1]
+    raise ValueError(f"Camelot inválido: {cam!r}")
+
+
+def pitch_shift_para_compatibilizar(cam_vocal: str, cam_base: str) -> float:
+    """Menor transposição (semitons, em [-6, 6]) que torna o vocal compatível com a base.
+
+    Compatível = mesma célula Camelot, vizinho ±1 com a mesma letra, ou relativa
+    (mesmo número, letra oposta). A transposição preserva o modo do vocal, então
+    os alvos alcançáveis são {nº da base −1, nº, +1} com a letra DO VOCAL.
+    Já compatível → 0.0. Empate em |s| → prefere cair na mesma célula da base.
+    """
+    num_v, let_v = _parse_camelot(cam_vocal)
+    num_b, let_b = _parse_camelot(cam_base)
+
+    dist_roda = min((num_v - num_b) % 12, (num_b - num_v) % 12)
+    if (let_v == let_b and dist_roda <= 1) or (let_v != let_b and dist_roda == 0):
+        return 0.0
+
+    pc_v = _CAMELOT_TO_PC[f"{num_v}{let_v}"]
+    candidatos: list[tuple[float, int, float]] = []
+    for alvo_num_bruto in (num_b - 1, num_b, num_b + 1):
+        alvo_num = ((alvo_num_bruto - 1) % 12) + 1
+        s = (_CAMELOT_TO_PC[f"{alvo_num}{let_v}"] - pc_v) % 12
+        if s > 6:
+            s -= 12
+        candidatos.append((abs(s), 0 if alvo_num == num_b else 1, float(s)))
+    candidatos.sort()
+    return candidatos[0][2]
+
 
 def to_camelot(key: str, scale: str) -> str:
     """Converte tom musical (ex.: 'A', 'minor') para Camelot (ex.: '8A').

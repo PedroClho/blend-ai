@@ -26,6 +26,33 @@ def _stretch_pitch(
     return np.ascontiguousarray(out, dtype=np.float32)
 
 
+def _recortar(
+    voc: np.ndarray,
+    sr: int,
+    inicio: float,
+    dur: float | None,
+    fade_in_s: float = 0.02,
+    fade_out_s: float = 0.20,
+) -> np.ndarray:
+    """Corta o vocal (canais, n) em [inicio, inicio+dur) com fades nas bordas."""
+    i0 = max(0, int(round(inicio * sr)))
+    i1 = voc.shape[1] if dur is None else min(voc.shape[1], i0 + int(round(dur * sr)))
+    if i1 <= i0:
+        return np.zeros((voc.shape[0], 1), dtype=np.float32)
+    out = np.ascontiguousarray(voc[:, i0:i1], dtype=np.float32).copy()
+    nfi = min(int(fade_in_s * sr), out.shape[1])
+    if nfi > 1:
+        out[:, :nfi] *= np.linspace(0.0, 1.0, nfi, dtype=np.float32)
+    nfo = min(int(fade_out_s * sr), out.shape[1])
+    if nfo > 1:
+        out[:, -nfo:] *= np.linspace(1.0, 0.0, nfo, dtype=np.float32)
+    return out
+
+
+def _rms(x: np.ndarray) -> float:
+    return float(np.sqrt(np.mean(np.square(x), dtype=np.float64))) if x.size else 0.0
+
+
 def _to_channels(x: np.ndarray, ch: int) -> np.ndarray:
     """Ajusta o nº de canais: mono→ch (replica) ou estéreo→mono (média)."""
     if x.shape[0] == ch:
@@ -43,17 +70,23 @@ def render(
     sr: int,
     plan: AlignmentPlan,
 ) -> np.ndarray:
-    """Mixa o vocal de A (esticado/transposto) sobre o INSTRUMENTAL da base.
+    """Mixa o vocal de A (recortado/esticado/transposto) sobre o INSTRUMENTAL da base.
 
     Instrumental da base = todos os stems de B menos o vocal de B
-    (drums + bass + other). Retorna o mashup (canais, amostras) float32.
+    (drums + bass + other). O vocal é recortado em [vocal_in, vocal_in+vocal_dur)
+    (tempo de A) antes do stretch e tem o ganho casado por RMS com o trecho do
+    instrumental onde entra. Retorna o mashup (canais, amostras) float32.
     """
     instr_parts = [v for k, v in base_stems.items() if k != "vocals"]
     instrumental = np.sum(instr_parts, axis=0).astype(np.float32)
     if instrumental.ndim == 1:
         instrumental = instrumental[np.newaxis, :]
 
-    voc = _stretch_pitch(vocal, sr, plan.bpm_ratio, plan.pitch_shift_semitones)
+    voc = np.asarray(vocal, dtype=np.float32)
+    if voc.ndim == 1:
+        voc = voc[np.newaxis, :]
+    voc = _recortar(voc, sr, plan.vocal_in, plan.vocal_dur)
+    voc = _stretch_pitch(voc, sr, plan.bpm_ratio, plan.pitch_shift_semitones)
     if voc.ndim == 1:
         voc = voc[np.newaxis, :]
 
@@ -62,6 +95,14 @@ def render(
     voc = _to_channels(voc, ch)
 
     offset = max(0, int(round(plan.vocal_offset * sr)))
+
+    # ganho: RMS do vocal ≈ RMS do trecho do instrumental onde ele entra
+    # (ligeiramente abaixo, 0.9), com clamp p/ não amplificar ruído de separação
+    trecho = instrumental[:, offset : offset + voc.shape[1]]
+    rms_i, rms_v = _rms(trecho), _rms(voc)
+    if rms_i > 1e-6 and rms_v > 1e-6:
+        voc = voc * float(np.clip(0.9 * rms_i / rms_v, 0.25, 4.0))
+
     n = max(instrumental.shape[1], offset + voc.shape[1])
 
     mix = np.zeros((ch, n), dtype=np.float32)
