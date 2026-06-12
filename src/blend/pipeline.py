@@ -2,12 +2,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Callable
 
 import numpy as np
 
 from .alignment import align
 from .compatibility import compatibility_score
-from .types import AlignmentPlan, ScoreCompat
+from .types import AlignmentPlan, ScoreCompat, TrackAnalysis
 
 
 @dataclass
@@ -17,6 +18,8 @@ class MashupResult:
     stems: dict
     score: ScoreCompat
     plan: AlignmentPlan
+    analise_vocal: TrackAnalysis | None = None  # análise de A (UI/avaliação)
+    analise_base: TrackAnalysis | None = None  # análise de B (UI/avaliação)
 
 
 def _melhor_janela_vocal(
@@ -50,29 +53,42 @@ def _melhor_janela_vocal(
 
 
 def make_mashup(
-    path_vocal: str, path_base: str, mode: str = "proposto", sr: int = 44100
+    path_vocal: str,
+    path_base: str,
+    mode: str = "proposto",
+    sr: int = 44100,
+    on_stage: Callable[[str], None] | None = None,
 ) -> MashupResult:
     """Vocal de `path_vocal` sobre o instrumental de `path_base`.
 
     Fluxo: load → separação → análise (beat/downbeat/estrutura) → tom → score →
     alinhamento → síntese. Integra blend-audio (P1) + blend-mashup (P2).
+    `on_stage` (opcional) recebe o nome da etapa ao iniciá-la (progresso na UI).
     """
     from . import io, key, separation, synthesis
     from .analysis import analyze
 
+    def _stage(nome: str) -> None:
+        if on_stage is not None:
+            on_stage(nome)
+
     # 1) carregar A (vocal) e B (base)
+    _stage("carregando")
     voc_samples, _ = io.load_audio(path_vocal, sr=sr, mono=False)
     base_samples, _ = io.load_audio(path_base, sr=sr, mono=False)
 
     # 2) separar: instrumental de B (stems) + vocal isolado de A
+    _stage("separando")
     stems_base = separation.separate(base_samples, sr)
     vocal_only = separation.separate(voc_samples, sr)["vocals"]
 
     # 3) análise rítmica/estrutural de ambas
+    _stage("analisando")
     an_vocal = analyze(path_vocal, voc_samples, sr)
     an_base = analyze(path_base, base_samples, sr)
 
     # 4) tom → Camelot (Essentia); sem tom, o score harmônico fica neutro
+    _stage("estimando_tom")
     try:
         an_vocal.key_camelot = key.estimate_key(voc_samples, sr)
         an_base.key_camelot = key.estimate_key(base_samples, sr)
@@ -84,6 +100,7 @@ def make_mashup(
 
     # 6) alinhamento (H1). métricas de áudio por segmento ainda não injetadas
     #    (TODO P2: vocal_fit_rel dos stems) → escolha de seção degrada determinística
+    _stage("alinhando")
     plan = align(an_vocal, an_base, mode=mode)
 
     # 6b) recorte do vocal: a janela do tamanho da seção alvo com mais energia
@@ -97,6 +114,15 @@ def make_mashup(
         )
 
     # 7) síntese: vocal de A sobre o instrumental de B
+    _stage("sintetizando")
     mashup = synthesis.render(vocal_only, stems_base, sr, plan)
 
-    return MashupResult(mashup=mashup, sr=sr, stems=stems_base, score=score, plan=plan)
+    return MashupResult(
+        mashup=mashup,
+        sr=sr,
+        stems=stems_base,
+        score=score,
+        plan=plan,
+        analise_vocal=an_vocal,
+        analise_base=an_base,
+    )

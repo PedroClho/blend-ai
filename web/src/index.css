@@ -1,0 +1,143 @@
+@import "tailwindcss";
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Blend AI — design system "instrumento de estúdio"
+   Claro, preciso, hardware de áudio: hairlines, microlabels mono, grain sutil.
+   Assinatura: sistema de cores por stem + timeline de estrutura musical.
+─────────────────────────────────────────────────────────────────────────── */
+@theme {
+  --font-display: "Unbounded", system-ui, sans-serif;
+  --font-sans: "Instrument Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --color-paper: #fcfcfd;
+  --color-surface: #f5f6f9;
+  --color-surface-2: #edeff4;
+  --color-line: #e4e7ee;
+  --color-ink: #14171f;
+  --color-ink-soft: #6a7180;
+  --color-ink-faint: #9aa1ae;
+
+  --color-brand: #6d5ef6;
+  --color-brand-deep: #4f46e5;
+  --color-brand-soft: #eef0fe;
+
+  --color-vocal: #3b82f6;
+  --color-drums: #f59e0b;
+  --color-bass: #ef4444;
+  --color-other: #10b981;
+
+  --color-ok: #10b981;
+  --color-warn: #f59e0b;
+  --color-bad: #ef4444;
+
+  --shadow-card: 0 1px 2px rgb(16 24 40 / 0.05), 0 1px 3px rgb(16 24 40 / 0.04);
+  --shadow-lift: 0 8px 28px rgb(16 24 40 / 0.09);
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  /* grain sutil de estúdio sobre o papel */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.022'/%3E%3C/svg%3E");
+}
+
+::selection {
+  background: var(--color-brand);
+  color: #fff;
+}
+
+/* microlabel técnico: mono, uppercase, espaçado */
+.microlabel {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ink-faint);
+}
+
+/* régua hairline com tique central (separadores de seção) */
+.rule {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.rule::before,
+.rule::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--color-line);
+}
+
+/* ── animações ─────────────────────────────────────────────────────────── */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.reveal {
+  animation: fade-up 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes eq-bounce {
+  0%,
+  100% {
+    transform: scaleY(0.25);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+.eq-bar {
+  transform-origin: bottom;
+  animation: eq-bounce 0.9s ease-in-out infinite;
+}
+
+@keyframes beat-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(109 94 246 / 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 9px rgb(109 94 246 / 0);
+  }
+}
+.beat-pulse {
+  animation: beat-pulse 0.938s ease-out infinite; /* 128 BPM, meia nota */
+}
+
+@keyframes sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(380%);
+  }
+}
+.sweep::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 35%;
+  background: linear-gradient(90deg, transparent, rgb(109 94 246 / 0.16), transparent);
+  animation: sweep 1.6s ease-in-out infinite;
+}
+
+@keyframes dash-march {
+  to {
+    stroke-dashoffset: -16;
+  }
+}

@@ -38,3 +38,9 @@ Thumbs.db
 # Byproducts do allin1 (espectrogramas + stems internos) — cache local, nao versionar
 spec/
 demix/
+
+# Frontend (web/)
+web/node_modules/
+web/dist/
+.gstack/
+web/tsconfig.tsbuildinfo

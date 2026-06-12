@@ -13,7 +13,10 @@ scipy
 pyrekordbox
 
 # Interface
-streamlit
+fastapi
+uvicorn
+python-multipart
+streamlit          # UI legada (app/app.py); a oficial é web/ (SPA) + api/
 
 # Avaliação / estatística
 pandas
