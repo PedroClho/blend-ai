@@ -1,14 +1,24 @@
 .git
 .gitignore
 __pycache__
+**/__pycache__
 *.pyc
 .venv
 venv
 .pytest_cache
+# dados/áudio NUNCA entram na imagem (fonogramas comerciais — risco legal)
+# atenção à semântica Go: *.mp3 sozinho só casa na RAIZ; usar **/
 data
 output
 models
-*.mp3
-*.wav
-*.flac
+demix
+spec
+playlist_atv
+**/*.mp3
+**/*.wav
+**/*.flac
+**/*.npy
 designs
+docs
+web/node_modules
+web/tsconfig.tsbuildinfo
