@@ -64,6 +64,38 @@ def _to_channels(x: np.ndarray, ch: int) -> np.ndarray:
     return np.repeat(x[:1], ch, axis=0)
 
 
+def _passa_altas(x: np.ndarray, sr: int, fc: float = 110.0, ordem: int = 2) -> np.ndarray:
+    """Passa-altas Butterworth (gentil): tira graves do vocal p/ não competir com o baixo de B."""
+    if x.size == 0:
+        return x
+    from scipy.signal import butter, sosfilt
+
+    sos = butter(ordem, fc / (sr / 2.0), btype="highpass", output="sos")
+    return np.ascontiguousarray(sosfilt(sos, x, axis=-1), dtype=np.float32)
+
+
+def _envelope(mono: np.ndarray, sr: int, suav_s: float = 0.05) -> np.ndarray:
+    """Envelope de amplitude suavizado, normalizado em [0,1] (p/ ducking)."""
+    win = max(1, int(suav_s * sr))
+    env = np.convolve(np.abs(mono), np.ones(win, np.float32) / win, mode="same")
+    m = float(env.max()) if env.size else 0.0
+    return env / m if m > 1e-9 else env
+
+
+def _ducking(
+    instrumental: np.ndarray, voc: np.ndarray, offset: int, sr: int, reducao_db: float = 3.5
+) -> np.ndarray:
+    """Sidechain-lite: atenua a base em até −`reducao_db` onde o vocal é forte."""
+    out = instrumental.copy()
+    n = min(voc.shape[1], out.shape[1] - offset)
+    if n <= 0:
+        return out
+    env = _envelope(voc.mean(axis=0)[:n], sr)
+    alpha = 1.0 - 10.0 ** (-abs(reducao_db) / 20.0)  # 1 sem vocal → 10^(-db/20) no pico
+    out[:, offset : offset + n] *= (1.0 - alpha * env).astype(np.float32)
+    return out
+
+
 def render(
     vocal: np.ndarray,
     base_stems: dict[str, np.ndarray],
@@ -96,15 +128,21 @@ def render(
 
     offset = max(0, int(round(plan.vocal_offset * sr)))
 
-    # ganho: RMS do vocal ≈ RMS do trecho do instrumental onde ele entra
-    # (ligeiramente abaixo, 0.9), com clamp p/ não amplificar ruído de separação
+    # corte de graves no vocal: não disputa a região do baixo de B (menos "barro")
+    voc = _passa_altas(voc, sr)
+
+    # ganho: casa o RMS do vocal com a energia da base NA BANDA DO VOCAL (a base
+    # também passa-altas, p/ o baixo não dominar a referência e estourar o vocal),
+    # vocal no nível da base. clamp evita amplificar bleed da separação.
     trecho = instrumental[:, offset : offset + voc.shape[1]]
-    rms_i, rms_v = _rms(trecho), _rms(voc)
+    rms_i, rms_v = _rms(_passa_altas(trecho, sr)), _rms(voc)
     if rms_i > 1e-6 and rms_v > 1e-6:
-        voc = voc * float(np.clip(0.9 * rms_i / rms_v, 0.25, 4.0))
+        voc = voc * float(np.clip(rms_i / rms_v, 0.25, 4.0))
+
+    # ducking: abre espaço pro vocal atenuando a base sob ele (sidechain-lite)
+    instrumental = _ducking(instrumental, voc, offset, sr)
 
     n = max(instrumental.shape[1], offset + voc.shape[1])
-
     mix = np.zeros((ch, n), dtype=np.float32)
     mix[:, : instrumental.shape[1]] += instrumental
     mix[:, offset : offset + voc.shape[1]] += voc

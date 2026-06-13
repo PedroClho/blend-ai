@@ -14,7 +14,7 @@ import numpy as np  # noqa: E402
 
 from blend.alignment import align  # noqa: E402
 from blend.pipeline import _melhor_janela_vocal, _recorte_vocal  # noqa: E402
-from blend.synthesis import _recortar, render  # noqa: E402
+from blend.synthesis import _ducking, _passa_altas, _recortar, render  # noqa: E402
 from blend.types import AlignmentPlan, Segment, TrackAnalysis  # noqa: E402
 
 SR = 44100
@@ -95,9 +95,10 @@ def test_janela_ancora_no_downbeat_anterior():
 # render (recorte + offset + ganho; sem stretch/pitch)
 # --------------------------------------------------------------------------- #
 def test_render_recorta_e_posiciona():
-    # vocal: 1s silêncio + 2s de "voz" constante; recorte em [1s, 2s)
+    # vocal: 1s silêncio + 2s de tom (sobrevive ao passa-altas); recorte em [1s, 2s)
+    t = np.arange(3 * SR) / SR
     voc = np.zeros((1, 3 * SR), dtype=np.float32)
-    voc[0, SR:] = 0.5
+    voc[0, SR:] = (0.5 * np.sin(2 * np.pi * 330 * t[SR:])).astype(np.float32)
     stems = {
         "vocals": np.zeros((1, 5 * SR), dtype=np.float32),  # excluído da mix
         "other": np.zeros((1, 5 * SR), dtype=np.float32),
@@ -129,12 +130,33 @@ def test_render_ganho_casa_com_instrumental():
 
 
 def test_render_sem_clipping():
-    voc = 0.9 * np.ones((1, SR), dtype=np.float32)
+    t = np.arange(SR) / SR
+    voc = (0.9 * np.sin(2 * np.pi * 440 * t)).astype(np.float32)[np.newaxis, :]
     instr = 0.9 * np.ones((1, 2 * SR), dtype=np.float32)
     stems = {"vocals": np.zeros((1, 2 * SR), dtype=np.float32), "drums": instr}
     plan = _plan(vocal_offset=0.0, vocal_in=0.0, vocal_dur=None)
     mix = render(voc, stems, SR, plan)
     assert float(np.max(np.abs(mix))) <= 1.0 + 1e-6
+
+
+def test_passa_altas_corta_grave_preserva_agudo():
+    t = np.arange(SR) / SR
+    grave = np.sin(2 * np.pi * 50 * t).astype(np.float32)[np.newaxis, :]
+    agudo = np.sin(2 * np.pi * 2000 * t).astype(np.float32)[np.newaxis, :]
+    r = lambda x: float(np.sqrt(np.mean(x**2)))  # noqa: E731
+    assert r(_passa_altas(grave, SR)) < 0.3 * r(grave)  # 50 Hz bem atenuado
+    assert r(_passa_altas(agudo, SR)) > 0.8 * r(agudo)  # 2 kHz preservado
+
+
+def test_ducking_atenua_sob_o_vocal():
+    instr = np.ones((1, 4 * SR), dtype=np.float32)
+    t = np.arange(2 * SR) / SR
+    voc = (0.8 * np.sin(2 * np.pi * 300 * t)).astype(np.float32)[np.newaxis, :]
+    out = _ducking(instr, voc, offset=SR, sr=SR, reducao_db=3.5)
+    assert abs(out[0, SR // 2] - 1.0) < 1e-3  # antes do vocal: base intacta
+    meio = float(np.mean(out[0, int(1.5 * SR) : int(2.5 * SR)]))
+    assert 0.6 < meio < 0.92  # sob o vocal: atenuada (~−3.5 dB)
+    assert abs(out[0, int(3.5 * SR)] - 1.0) < 1e-3  # depois do vocal: intacta
 
 
 # --------------------------------------------------------------------------- #
