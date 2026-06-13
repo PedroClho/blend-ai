@@ -12,9 +12,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 import numpy as np  # noqa: E402
 
-from blend.pipeline import _melhor_janela_vocal  # noqa: E402
+from blend.alignment import align  # noqa: E402
+from blend.pipeline import _melhor_janela_vocal, _recorte_vocal  # noqa: E402
 from blend.synthesis import _recortar, render  # noqa: E402
-from blend.types import AlignmentPlan, Segment  # noqa: E402
+from blend.types import AlignmentPlan, Segment, TrackAnalysis  # noqa: E402
 
 SR = 44100
 
@@ -134,3 +135,54 @@ def test_render_sem_clipping():
     plan = _plan(vocal_offset=0.0, vocal_in=0.0, vocal_dur=None)
     mix = render(voc, stems, SR, plan)
     assert float(np.max(np.abs(mix))) <= 1.0 + 1e-6
+
+
+# --------------------------------------------------------------------------- #
+# _recorte_vocal + invariante de H1 (mesmo trecho vocal nos dois braços)
+# --------------------------------------------------------------------------- #
+def test_recorte_vocal_comprimento_fixo_em_compassos():
+    voc = np.ones((1, 90 * SR), dtype=np.float32)  # vocal sobra
+    _ini, dur = _recorte_vocal(voc, SR, bpm_vocal=120.0, downbeats=[])
+    assert abs(dur - 32.0) < 0.6  # 16 compassos a 120 BPM = 32 s
+
+
+def test_recorte_vocal_capado_pelo_vocal_disponivel():
+    voc = np.ones((1, 10 * SR), dtype=np.float32)  # só 10 s
+    _ini, dur = _recorte_vocal(voc, SR, bpm_vocal=130.0, downbeats=[])
+    assert dur <= 10.0 + 1e-6
+
+
+def test_h1_invariante_vocal_identico_baseline_vs_proposto():
+    """Invariante de H1: trecho vocal idêntico nos 2 modos; só a colocação muda."""
+    # vocal com energia concentrada em 30–45 s
+    y = (0.01 * np.ones(60 * SR)).astype(np.float32)
+    y[30 * SR : 45 * SR] = 0.6
+    vocal = y[np.newaxis, :]
+
+    an_vocal = TrackAnalysis(
+        path="a", sr=SR, bpm=130.0,
+        downbeats=[i * (4 * 60 / 130) for i in range(30)],
+        segments=[], key_camelot="1A",
+    )
+    bar_b = 4 * 60 / 128
+    an_base = TrackAnalysis(
+        path="b", sr=SR, bpm=128.0,
+        downbeats=[i * bar_b for i in range(45)],
+        segments=[Segment(0.0, 30.0, "intro"), Segment(30.0, 70.0, "chorus")],
+        key_camelot="8A",
+    )
+
+    plan_base = align(an_vocal, an_base, mode="baseline")
+    plan_prop = align(an_vocal, an_base, mode="proposto")
+
+    # o recorte é função SÓ de A → idêntico para os dois modos
+    rec_base = _recorte_vocal(vocal, SR, an_vocal.bpm, an_vocal.downbeats)
+    rec_prop = _recorte_vocal(vocal, SR, an_vocal.bpm, an_vocal.downbeats)
+    assert rec_base == rec_prop
+    assert abs(rec_prop[1] - 16 * (4 * 60 / 130)) < 0.6  # clipe fixo, não a seção
+
+    # stretch e pitch idênticos; SÓ a colocação sobre B difere (manipulação de H1)
+    assert plan_base.bpm_ratio == plan_prop.bpm_ratio
+    assert plan_base.pitch_shift_semitones == plan_prop.pitch_shift_semitones
+    assert plan_base.vocal_offset != plan_prop.vocal_offset
+    assert plan_prop.nivel_fallback == 0  # escolheu o refrão de verdade

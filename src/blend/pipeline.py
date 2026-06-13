@@ -52,6 +52,33 @@ def _melhor_janela_vocal(
     return antes[-1] if antes else ini
 
 
+# Comprimento fixo do trecho vocal: 16 compassos de A (~30 s a 130 BPM, alinhado
+# à recomendação do P4). Deliberadamente independente da seção da base.
+CLIPE_COMPASSOS = 16
+
+
+def _recorte_vocal(
+    vocal: np.ndarray,
+    sr: int,
+    bpm_vocal: float,
+    downbeats: list[float],
+    compassos: int = CLIPE_COMPASSOS,
+) -> tuple[float, float]:
+    """Trecho vocal (vocal_in, vocal_dur) em segundos de A — INDEPENDENTE do modo.
+
+    Comprimento fixo em compassos de A (não da seção da base): garante que
+    baseline e proposto usem EXATAMENTE o mesmo conteúdo vocal, diferindo só na
+    COLOCAÇÃO sobre B (vocal_offset). É a invariante que torna a H1 um teste
+    justo — sem ela, o painel compararia trechos vocais diferentes (duração e
+    conteúdo), não o alinhamento estrutura-aware. A janela é a de maior energia
+    vocal, ancorada em downbeat de A; `vocal_dur` é capado pelo vocal disponível.
+    """
+    bar_s = 4 * 60.0 / bpm_vocal if bpm_vocal and bpm_vocal > 0 else 2.0
+    dur = min(compassos * bar_s, vocal.shape[-1] / sr)
+    ini = _melhor_janela_vocal(vocal, sr, dur, downbeats)
+    return ini, dur
+
+
 def make_mashup(
     path_vocal: str,
     path_base: str,
@@ -103,15 +130,13 @@ def make_mashup(
     _stage("alinhando")
     plan = align(an_vocal, an_base, mode=mode)
 
-    # 6b) recorte do vocal: a janela do tamanho da seção alvo com mais energia
-    #     vocal, ancorada no downbeat de A (fase da grade). `vocal_dur` em tempo
-    #     de A: após o stretch (÷ bpm_ratio) vira o tempo da base.
-    dur_na_base = plan.target_segment.end - plan.vocal_offset
-    if dur_na_base > 0:
-        plan.vocal_dur = dur_na_base * plan.bpm_ratio
-        plan.vocal_in = _melhor_janela_vocal(
-            vocal_only, sr, plan.vocal_dur, an_vocal.downbeats
-        )
+    # 6b) recorte do vocal: trecho de comprimento FIXO (compassos de A), IDÊNTICO
+    #     entre baseline e proposto — invariante de H1. As duas pontas diferem só
+    #     na COLOCAÇÃO sobre B (vocal_offset / seção), nunca no conteúdo vocal.
+    #     `vocal_dur` em tempo de A; após o stretch (÷ bpm_ratio) vira tempo de B.
+    plan.vocal_in, plan.vocal_dur = _recorte_vocal(
+        vocal_only, sr, an_vocal.bpm, an_vocal.downbeats
+    )
 
     # 7) síntese: vocal de A sobre o instrumental de B
     _stage("sintetizando")
