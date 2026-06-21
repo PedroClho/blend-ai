@@ -17,8 +17,6 @@ próximo passo.
 4. **Resultado quantitativo (H2):** [`resultado-matriz-compatibilidade.md`](resultado-matriz-compatibilidade.md)
    — matriz de compatibilidade sobre dados reais do Rekordbox.
 
-> Os `.wav` não vão no repositório (áudio comercial é gitignored) — anexar à mão na entrega.
-
 ## Como o exemplo foi gerado
 
 Pipeline: separação de fontes (Demucs) → beat/downbeat/estrutura (allin1) → tom→Camelot
@@ -45,8 +43,8 @@ python scripts/corta_trecho.py <mashup>.wav 40 85 EXEMPLO_aula_tatsch_x_brokenhi
   assistido (DJ escolhe o trecho/âncora) — o caminho para resultado utilizável.
 - **H2 (score de compatibilidade):** a matriz separa bem pares compatíveis dos ruins
   (ver doc da matriz).
-- **H3 (vocal declamado tolera salto harmônico):** confirmado na prática — vocais
-  declamados caem bem **sem transposição** mesmo com tom distante, evitando o artefato de
+- **H3 (vocal falado tolera salto harmônico):** confirmado na prática — vocais
+  falados caem bem **sem transposição** mesmo com tom distante, evitando o artefato de
   um pitch-shift grande.
 
 ## Status e próximos passos
