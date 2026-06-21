@@ -431,6 +431,7 @@ def align(
     mode: str = "proposto",
     metricas_por_segmento: list[dict] | None = None,
     params: ParamsSecao | None = None,
+    transpor: bool = True,
 ) -> AlignmentPlan:
     """Decide como o vocal entra sobre a base. Não lê áudio (contrato TrackAnalysis).
 
@@ -439,15 +440,19 @@ def align(
 
     Baseline e proposto diferem **só** em seção + ancoragem — mesmo stretch/pitch
     (teste justo de H1). Ambos existem para o experimento comparativo (P4).
+
+    transpor=False (H3): pula a transposição harmônica (pitch_shift=0). Para vocais
+    declamados (funk), que toleram maior distância de Camelot sem soar desafinados —
+    evita o artefato de um pitch-shift grande quando o tom destoa (ou foi mal estimado).
     """
     params = params or ParamsSecao()
 
     bpm_ratio = _escolher_bpm_ratio(base.bpm, vocal.bpm)
     # Transposição mínima p/ compatibilidade harmônica (mesma p/ baseline e
     # proposto — teste justo de H1). Sem tom estimado (ou inválido) → 0.0.
-    # TODO H3: permitir pular a transposição p/ vocais declamados (funk).
+    # transpor=False (H3): força 0.0 mesmo com tom estimado.
     pitch_shift = 0.0
-    if vocal.key_camelot and base.key_camelot:
+    if transpor and vocal.key_camelot and base.key_camelot:
         try:
             from .key import pitch_shift_para_compatibilizar
 

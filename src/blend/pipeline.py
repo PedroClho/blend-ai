@@ -85,6 +85,11 @@ def make_mashup(
     mode: str = "proposto",
     sr: int = 44100,
     on_stage: Callable[[str], None] | None = None,
+    compassos: int = CLIPE_COMPASSOS,
+    transpor: bool = True,
+    vocal_in: float | None = None,
+    vocal_dur: float | None = None,
+    vocal_offset: float | None = None,
 ) -> MashupResult:
     """Vocal de `path_vocal` sobre o instrumental de `path_base`.
 
@@ -128,15 +133,24 @@ def make_mashup(
     # 6) alinhamento (H1). métricas de áudio por segmento ainda não injetadas
     #    (TODO P2: vocal_fit_rel dos stems) → escolha de seção degrada determinística
     _stage("alinhando")
-    plan = align(an_vocal, an_base, mode=mode)
+    plan = align(an_vocal, an_base, mode=mode, transpor=transpor)
 
     # 6b) recorte do vocal: trecho de comprimento FIXO (compassos de A), IDÊNTICO
     #     entre baseline e proposto — invariante de H1. As duas pontas diferem só
     #     na COLOCAÇÃO sobre B (vocal_offset / seção), nunca no conteúdo vocal.
     #     `vocal_dur` em tempo de A; após o stretch (÷ bpm_ratio) vira tempo de B.
     plan.vocal_in, plan.vocal_dur = _recorte_vocal(
-        vocal_only, sr, an_vocal.bpm, an_vocal.downbeats
+        vocal_only, sr, an_vocal.bpm, an_vocal.downbeats, compassos=compassos
     )
+    # overrides manuais (DJ-in-the-loop): a ancoragem escolhida na mão sobrescreve
+    # a detecção automática. Base do "Ver + ancorar" — vocal_in/dur em tempo de A
+    # (segundos), vocal_offset = posição do vocal na base B (segundos).
+    if vocal_in is not None:
+        plan.vocal_in = vocal_in
+    if vocal_dur is not None:
+        plan.vocal_dur = vocal_dur
+    if vocal_offset is not None:
+        plan.vocal_offset = vocal_offset
 
     # 7) síntese: vocal de A sobre o instrumental de B
     _stage("sintetizando")

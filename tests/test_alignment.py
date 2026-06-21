@@ -385,6 +385,19 @@ def test_baseline_sem_downbeats_offset_zero():
     assert plan.vocal_offset == 0.0
 
 
+def test_h3_transpor_false_zera_pitch_shift():
+    """H3: transpor=False força pitch 0 mesmo com tons distantes (5A × 8B)."""
+    base = _track(127.0, 96.0, key="8B")
+    vocal = _track(127.0, 60.0, key="5A")
+    com = align(vocal, base, mode="baseline")  # default transpor=True
+    sem = align(vocal, base, mode="baseline", transpor=False)
+    assert com.pitch_shift_semitones != 0.0  # tons distantes → transpõe
+    assert sem.pitch_shift_semitones == 0.0  # H3 → não transpõe
+    # o toggle não mexe em mais nada do plano
+    assert sem.vocal_offset == com.vocal_offset
+    assert sem.bpm_ratio == com.bpm_ratio
+
+
 def test_proposto_escolhe_secao_e_ancora_no_downbeat_da_secao():
     base = _track(128.0, 96.0, segs=[
         Segment(0.0, 16.0, "intro"),
