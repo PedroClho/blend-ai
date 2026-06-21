@@ -40,18 +40,6 @@ Rótulo das faixas: `Título (Camelot/BPM)`.
 | 0.333 | Stop Talking (6A/131) + Trust Me (10A/126) | 0.20 · 0.52 |
 | 0.224 | Zero Tolerance (6A/125) + Bad Wolf (1A/131) | 0.10 · 0.40 |
 
-## Melhores bases para o VOCAL do funk — Lost Eletrofunk (6A/130)
-
-Ranking ligado ao caso-guia do produto (vocal de funk sobre base de house):
-
-| score | base | harm · tempo |
-|---|---|---|
-| 1.000 | Swag (6A/130) | 1.00 · 1.00 |
-| 1.000 | Get Naughty (6A/130) | 1.00 · 1.00 |
-| 0.960 | Stop Talking (6A/131) | 1.00 · 0.90 |
-| 0.833 | Pokasamba (5A/128) | 0.85 · 0.81 |
-| 0.802 | Zero Tolerance (6A/125) | 1.00 · 0.52 |
-
 ## Leitura
 
 - **Mesmo Camelot + mesmo BPM → score máximo (1.000):** o score reconhece os pares
@@ -59,7 +47,7 @@ Ranking ligado ao caso-guia do produto (vocal de funk sobre base de house):
 - **Penalização harmônica domina o fundo da lista:** o pior par (`Zero Tolerance` 6A
   + `Bad Wolf` 1A = 0.224) soma salto de Camelot grande **e** BPM distante — o score
   separa bem os extremos, o que é o pré-requisito para H2 (score prevê qualidade percebida).
-- **Conexão com o experimento:** este ranking é o que alimenta a seleção estratificada de
+- **Conexão com o experimento:** a matriz é o que alimenta a seleção estratificada de
   pares do experimento subjetivo (pares de alta e baixa compatibilidade), de forma que a
   correlação de Spearman (score × nota do painel) tenha espalhamento suficiente.
 - **Ressalva:** sem o termo de energia/estrutura (que vem dos stems no pipeline real), então
