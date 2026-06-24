@@ -1,6 +1,13 @@
 # Plano — Backend de separação Mel-Band RoFormer (Fase 1b)
 > Módulo: P1 (blend-audio) · Spec: specs/separacao-roformer.md
 
+> **Status (verificado em venv arm64/M5, com mocks):**
+> ✅ Tarefa 1 — dispatch por `BLEND_SEP_BACKEND` (default `htdemucs`; `htdemucs` byte-equivalente; inválido → `ValueError`) ·
+> ✅ Tarefa 2 — `_write_tmp_wav`/`_read_stem_wav` (roundtrip) · ✅ Tarefa 4 — `_mapear_2stem` (2-stem → 4 chaves).
+> ⏳ **Pendente (exige Docker+GPU + `audio-separator`):** `_rodar_roformer` (chamada real ao Separator —
+> implementado como **seam**, não-verificável no Mac), o caminho 4-stem (Tarefa 4b), o fallback OOM real (Tarefa 5),
+> e o SDR em MUSDB18 + deps/pesos no Dockerfile (Tarefa 6).
+
 ## Objetivo
 
 Adicionar um segundo backend de separação (**Mel-Band RoFormer** via `python-audio-separator`) **atrás da interface estável** `separate(samples, sr) -> dict[str, np.ndarray]`, selecionável por env var `BLEND_SEP_BACKEND` (`htdemucs` default | `roformer`). Stems mais limpos (vocal de A, instrumental de B) com menos vazamento, sem tocar em `pipeline.py`, `synthesis.py` nem `alignment.py`. Default permanece `htdemucs` (caminho garantido na RTX 2060 + 16 GB de RAM); RoFormer é opt-in até provar ganho de SDR sem regressão de viabilidade.

@@ -1,6 +1,14 @@
 # Plano — Mashability aprendida COCOLA (Fase 2)
 > Módulos: P2 (blend-mashup) + P4 (blend-eval) · Spec: specs/mashability-cocola.md
 
+> **Status (verificado em venv arm64/M5, COCOLA mockado):**
+> ✅ Tarefa 1 — `mashability()` (H2 + COCOLA direcional; `embed=None` byte-idêntico ao H2) + `EmbedFeatures.sim_ab/sim_ba` ·
+> ✅ Tarefa 2 (parcial) — `score_bilinear`, `_preparar_audio` (16 kHz/mono/5 s), `embed_de_audio` (glue) ·
+> ✅ Tarefa 3 — cache de embeddings · ✅ Tarefa 7 — `Calibrador` (logística) + `montar_features` · ✅ Tarefa 8 — `comparar_rankers`.
+> ⏳ **Pendente (exige Docker+GPU + checkpoint `COCOLA_HP_v1`):** o `_CocolaAdapter` real (carregar pesos + bilinear —
+> **seam** não-verificável no Mac), a injeção de `EmbedFeatures` no `make_mashup` (Tarefa 4, depende do COCOLA),
+> a validação zero-shot nos pares (Tarefa 5, **gate de risco**) e a coleta de rótulos direcionais (Tarefa 6).
+
 ## Objetivo
 
 Adicionar um ranker de mashability **aprendido e assimétrico** (vocal-de-A-sobre-base-de-B ≠ vocal-de-B-sobre-base-de-A) que **convive** com o H2 heurístico sem substituí-lo. A engine é o **COCOLA congelado** (EfficientNet-B0, embedding 512-dim, score bilinear `h₁ᵀW h₂` direcional), só inferência. A fusão final é uma **cabeça de calibração minúscula** (logística/LightGBM) que combina o score COCOLA direcional (dois sentidos) com os componentes já existentes do H2 (`harmonico`, `tempo`, `energia`) e features baratas.
