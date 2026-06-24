@@ -152,6 +152,16 @@ def make_mashup(
     if vocal_offset is not None:
         plan.vocal_offset = vocal_offset
 
+    # 6c) sincronização frase-a-frase (Fase 1a): cada frase do vocal ancorada num
+    #     downbeat da base. Só no proposto fora do fallback baseline — baseline e
+    #     nivel_fallback==4 ficam com phrase_anchors=None → render usa âncora única
+    #     (caminho byte-idêntico; preserva a invariante de H1, teste justo).
+    if mode == "proposto" and plan.nivel_fallback != 4:
+        voc_rec = synthesis._recortar(vocal_only, sr, plan.vocal_in, plan.vocal_dur)
+        plan.phrase_anchors = synthesis.sincronizar_frases(
+            voc_rec, sr, plan, an_base.downbeats, bpm_base=an_base.bpm
+        )
+
     # 7) síntese: vocal de A sobre o instrumental de B
     _stage("sintetizando")
     mashup = synthesis.render(vocal_only, stems_base, sr, plan)

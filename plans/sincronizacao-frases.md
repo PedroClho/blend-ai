@@ -1,12 +1,12 @@
 # Plano — Sincronização frase-a-frase do vocal (Fase 1a)
 > Módulo: P2 (blend-mashup) · Spec: specs/sincronizacao-frases.md
 
-> **Status (parcial, verificado em venv arm64/M5 — 146 testes verdes):**
+> **Status: implementação COMPLETA, verificada em venv arm64/M5 (lógica + integração mockada):**
 > ✅ Fase 0 (`AlignmentPlan.phrase_anchors`) · ✅ `_detectar_frases` · ✅ `sincronizar_frases` ·
-> ✅ render frase-a-frase (`_render_frases` + ramo em `render`; caminho de âncora única **byte-idêntico**).
-> ⏳ **Pendente (exige Docker+GPU):** Tarefa 6 (wiring no `make_mashup`) e os gates de áudio
-> (ouvir baseline vs proposto, % de frases em downbeat). As funções puras estão prontas e testadas;
-> falta só ligá-las no pipeline e validar com áudio real.
+> ✅ render frase-a-frase (`_render_frases` + ramo em `render`; caminho de âncora única **byte-idêntico**) ·
+> ✅ **Tarefa 6 — wiring no `make_mashup`** (proposto preenche `phrase_anchors`; baseline/`nivel_fallback==4` ficam `None`).
+> ⏳ **Falta só (exige Docker+GPU + áudio real):** os gates de validação — ouvir baseline vs proposto
+> numa dupla tech×tech e medir a % de frases em downbeat. Todo o código está pronto e testado (169 testes verdes).
 
 ## Objetivo
 
