@@ -9,6 +9,7 @@
 
 # Saídas, modelos e checkpoints baixados
 output/
+data/out/
 models/
 *.th
 *.ckpt
