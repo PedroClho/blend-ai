@@ -86,3 +86,5 @@ class EmbedFeatures:
     centroide: float | None = None  # centroide espectral (diferença de brilho)
     mfcc: list[float] | None = None  # MFCC médios (timbre)
     rms_por_stem: dict | None = None  # loudness por stem (dBFS)
+    sim_ab: float | None = None  # similaridade bilinear COCOLA direcional A→B (pré-computada)
+    sim_ba: float | None = None  # similaridade bilinear direção reversa B→A

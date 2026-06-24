@@ -24,10 +24,10 @@ from __future__ import annotations
 
 import math
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from .alignment import _escolher_bpm_ratio
-from .types import ScoreCompat, TrackAnalysis
+from .types import EmbedFeatures, ScoreCompat, TrackAnalysis
 
 
 # --------------------------------------------------------------------------- #
@@ -291,4 +291,36 @@ def compatibility_score(
         camelot_dist=cam_dist,
         bpm_ratio=bpm_ratio,
         pesos=w,
+    )
+
+
+# --------------------------------------------------------------------------- #
+# Mashability aprendida (Fase 2) — H2 + COCOLA direcional/assimétrico
+# --------------------------------------------------------------------------- #
+def mashability(
+    a: TrackAnalysis,
+    b: TrackAnalysis,
+    embed: EmbedFeatures | None = None,
+    metricas: dict | None = None,
+    params: ParamsScore | None = None,
+    cabeca=None,
+) -> ScoreCompat:
+    """Ranker de mashability: reusa o H2 e acrescenta o sinal COCOLA direcional.
+
+    `a` = vocal, `b` = base (mesma convenção do H2). **Sem `embed` é byte-idêntico
+    a `compatibility_score`** (não contamina o score científico). Com `embed`:
+    expõe `embed_sim` (similaridade bilinear A→B **pré-computada** em `mashability.py`,
+    mantendo este módulo puro) e o score de produto direcional — da **cabeça
+    calibrada** se houver (`cabeca.pontuar(embed, sc) -> (A→B, B→A)`), senão o próprio
+    sim direcional (zero-shot, sem rótulos). A assimetria vem de `sim_ab` ≠ `sim_ba`.
+    """
+    sc = compatibility_score(a, b, metricas, params)
+    if embed is None:
+        return sc
+    if cabeca is not None:
+        learned, learned_rev = cabeca.pontuar(embed, sc)
+    else:  # zero-shot: o sim direcional é o próprio score de produto
+        learned, learned_rev = embed.sim_ab, embed.sim_ba
+    return replace(
+        sc, learned_score=learned, learned_score_rev=learned_rev, embed_sim=embed.sim_ab
     )
