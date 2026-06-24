@@ -1,6 +1,13 @@
 # Plano — Sincronização frase-a-frase do vocal (Fase 1a)
 > Módulo: P2 (blend-mashup) · Spec: specs/sincronizacao-frases.md
 
+> **Status (parcial, verificado em venv arm64/M5 — 146 testes verdes):**
+> ✅ Fase 0 (`AlignmentPlan.phrase_anchors`) · ✅ `_detectar_frases` · ✅ `sincronizar_frases` ·
+> ✅ render frase-a-frase (`_render_frases` + ramo em `render`; caminho de âncora única **byte-idêntico**).
+> ⏳ **Pendente (exige Docker+GPU):** Tarefa 6 (wiring no `make_mashup`) e os gates de áudio
+> (ouvir baseline vs proposto, % de frases em downbeat). As funções puras estão prontas e testadas;
+> falta só ligá-las no pipeline e validar com áudio real.
+
 ## Objetivo
 
 Fazer com que **cada frase interna** do vocal de A entre num downbeat da base de B (não só a primeira), eliminando a deriva que hoje deixa o vocal "fora da grade" depois da 1ª frase. O ganho é puro DSP determinístico: a base já entrega `downbeats` (P1) e o pipeline já tem o stem vocal isolado (`vocal_only` em `make_mashup`).
