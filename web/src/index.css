@@ -141,3 +141,32 @@ body {
     stroke-dashoffset: -16;
   }
 }
+
+/* skeleton do waveform enquanto o wavesurfer decodifica o áudio */
+@keyframes ws-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+.ws-skeleton {
+  background-image: linear-gradient(
+    90deg,
+    var(--color-surface) 0%,
+    var(--color-surface-2) 20%,
+    var(--color-surface) 40%,
+    var(--color-surface) 100%
+  );
+  background-size: 200% 100%;
+  animation: ws-shimmer 1.4s ease-in-out infinite;
+}
+
+/* regions do wavesurfer: o rótulo (vocal A) fica como microlabel discreto */
+::part(region-content) {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-vocal);
+  padding: 2px 4px;
+}

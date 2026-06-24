@@ -1,5 +1,7 @@
+import { useMemo } from "react";
 import type { JobInfo, Resultado } from "../lib/api";
-import { SectionTimeline } from "./SectionTimeline";
+import { buildRegions, corSecao } from "../lib/wavesurfer";
+import { Waveform } from "./Waveform";
 
 function Leitura({
   rotulo,
@@ -35,9 +37,16 @@ export function Result({ job, onNovo }: { job: JobInfo; onNovo: () => void }) {
   const a = r.analise_vocal;
   const b = r.analise_base;
 
+  // seções da base + janela do vocal desenhadas sobre o waveform do mashup
+  const regioes = useMemo(() => buildRegions(r), [r]);
+  const rotulos = useMemo(
+    () => [...new Set((b?.segments ?? []).map((s) => s.label))],
+    [b],
+  );
+
   return (
     <div className="reveal space-y-5">
-      {/* player */}
+      {/* deck do mashup: waveform inteiro + estrutura por cima (a assinatura H1) */}
       <div className="rounded-xl border border-line bg-white p-6 shadow-card">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <div>
@@ -53,9 +62,42 @@ export function Result({ job, onNovo }: { job: JobInfo; onNovo: () => void }) {
           </span>
         </div>
 
-        <audio controls preload="metadata" src={r.audio_url} className="mt-4 w-full" />
+        <div className="mt-4 mb-2 flex items-baseline justify-between">
+          <span className="microlabel">estrutura da base × entrada do vocal</span>
+          <span className="font-mono text-[11px] text-ink-faint">
+            {plan.nivel_fallback === 0
+              ? `seção real: ${plan.secao.label}`
+              : `fallback nível ${plan.nivel_fallback}`}
+          </span>
+        </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-2">
+        <Waveform
+          src={r.audio_url}
+          regions={regioes}
+          waveColor="#b9bfca"
+          progressColor="#6d5ef6"
+          accent="#6d5ef6"
+          height={80}
+        />
+
+        {/* legenda das seções */}
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
+          {rotulos.map((rot) => (
+            <span key={rot} className="flex items-center gap-1.5">
+              <span
+                className="h-2 w-2 rounded-[3px]"
+                style={{ background: corSecao(rot), opacity: 0.55 }}
+              />
+              <span className="microlabel !text-[0.58rem]">{rot}</span>
+            </span>
+          ))}
+          <span className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-[3px] border-2 border-vocal" />
+            <span className="microlabel !text-[0.58rem]">vocal A</span>
+          </span>
+        </div>
+
+        <div className="mt-5 flex flex-wrap items-center gap-2">
           <a
             href={r.audio_url}
             download
@@ -80,21 +122,14 @@ export function Result({ job, onNovo }: { job: JobInfo; onNovo: () => void }) {
         </div>
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Leitura
-            rotulo="compatibilidade"
-            valor={score.total.toFixed(2)}
-            destaque
-          />
+          <Leitura rotulo="compatibilidade" valor={score.total.toFixed(2)} destaque />
           <Leitura rotulo="harmônico" valor={score.harmonico.toFixed(2)} />
           <Leitura rotulo="tempo" valor={score.tempo.toFixed(2)} />
           <Leitura rotulo="camelot dist" valor={String(score.camelot_dist)} unidade="passos" />
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Leitura
-            rotulo="stretch"
-            valor={`×${plan.bpm_ratio.toFixed(3)}`}
-          />
+          <Leitura rotulo="stretch" valor={`×${plan.bpm_ratio.toFixed(3)}`} />
           <Leitura
             rotulo="transposição"
             valor={`${plan.pitch_shift_semitones >= 0 ? "+" : ""}${plan.pitch_shift_semitones.toFixed(0)}`}
@@ -119,11 +154,6 @@ export function Result({ job, onNovo }: { job: JobInfo; onNovo: () => void }) {
               ` → vocal transposto ${plan.pitch_shift_semitones > 0 ? "+" : ""}${plan.pitch_shift_semitones.toFixed(0)} st para compatibilizar`}
           </p>
         )}
-      </div>
-
-      {/* timeline de estrutura — a assinatura */}
-      <div className="rounded-xl border border-line bg-white p-6 shadow-card">
-        <SectionTimeline resultado={r} />
       </div>
     </div>
   );

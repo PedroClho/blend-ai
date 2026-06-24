@@ -50,50 +50,59 @@ export default function App() {
 
   const ocupado = job !== null && (job.status === "na_fila" || job.status === "processando");
   const pronto = job?.status === "concluido" && job.resultado;
+  // hero encolhe assim que há faixa/decisão na tela — abre espaço pros waveforms
+  const heroCompacto = !!(faixaA || faixaB || job);
 
   return (
     <div className="min-h-screen">
       <Header />
 
       <main className="mx-auto max-w-5xl px-6 pb-20">
-        {/* hero */}
-        <section className="pb-8 pt-10 text-center sm:pt-14">
+        {/* hero — compacto assim que entra faixa/job */}
+        <section className={`text-center ${heroCompacto ? "pb-5 pt-6" : "pb-8 pt-10 sm:pt-14"}`}>
           <p className="microlabel reveal !text-brand">
             pav · ufg — alinhamento estrutura-aware
           </p>
           <h1
-            className="reveal mx-auto mt-3 max-w-2xl font-display text-[1.65rem] font-bold leading-[1.25] tracking-tight sm:text-4xl"
+            className={`reveal mx-auto mt-3 max-w-2xl font-display font-bold leading-[1.25] tracking-tight ${
+              heroCompacto ? "text-[1.4rem] sm:text-2xl" : "text-[1.65rem] sm:text-4xl"
+            }`}
             style={{ animationDelay: "0.06s" }}
           >
             O vocal de uma faixa.
             <br />
             <span className="text-brand">A estrutura</span> de outra.
           </h1>
-          <p
-            className="reveal mx-auto mt-4 max-w-xl text-[15px] leading-relaxed text-ink-soft"
-            style={{ animationDelay: "0.12s" }}
-          >
-            O Blend AI separa os stems, detecta BPM, tom e as seções musicais — e
-            encaixa o vocal na seção certa do instrumental, em fase com o groove.
-          </p>
 
-          {/* régua de beats — assinatura visual (4 compassos, downbeats marcados) */}
-          <div
-            className="reveal mx-auto mt-8 flex max-w-md items-end justify-between"
-            style={{ animationDelay: "0.18s" }}
-            aria-hidden
-          >
-            {Array.from({ length: 17 }).map((_, i) => (
-              <span
-                key={i}
-                className={
-                  i % 4 === 0
-                    ? "h-4 w-[2px] rounded-full bg-brand"
-                    : "h-2 w-px rounded-full bg-ink-faint/50"
-                }
-              />
-            ))}
-          </div>
+          {!heroCompacto && (
+            <>
+              <p
+                className="reveal mx-auto mt-4 max-w-xl text-[15px] leading-relaxed text-ink-soft"
+                style={{ animationDelay: "0.12s" }}
+              >
+                O Blend AI separa os stems, detecta BPM, tom e as seções musicais — e
+                encaixa o vocal na seção certa do instrumental, em fase com o groove.
+              </p>
+
+              {/* régua de beats — assinatura visual (4 compassos, downbeats marcados) */}
+              <div
+                className="reveal mx-auto mt-8 flex max-w-md items-end justify-between"
+                style={{ animationDelay: "0.18s" }}
+                aria-hidden
+              >
+                {Array.from({ length: 17 }).map((_, i) => (
+                  <span
+                    key={i}
+                    className={
+                      i % 4 === 0
+                        ? "h-4 w-[2px] rounded-full bg-brand"
+                        : "h-2 w-px rounded-full bg-ink-faint/50"
+                    }
+                  />
+                ))}
+              </div>
+            </>
+          )}
         </section>
 
         {pronto ? (
