@@ -42,6 +42,11 @@ class ScoreCompat:
     camelot_dist: int  # passos crus na roda (-1 = tom ausente); diagnóstico/Spearman
     bpm_ratio: float  # fator de stretch escolhido (diagnóstico, consistente com o alinhamento)
     pesos: dict = field(default_factory=dict)  # pesos efetivos usados (após redistribuição)
+    # --- Mashability aprendida (Fase 2, COCOLA). Opcionais: None = não computado,
+    # mantém o H2 heurístico intacto e a retrocompat de quem constrói só o básico. ---
+    learned_score: float | None = None  # score de produto direcional A→B (cabeça calibrada)
+    learned_score_rev: float | None = None  # direção reversa B→A (diagnóstico de assimetria)
+    embed_sim: float | None = None  # similaridade bilinear COCOLA crua (diagnóstico)
 
 
 @dataclass
@@ -58,3 +63,26 @@ class AlignmentPlan:
     # que detecta atividade vocal no stem e limita a duração à seção alvo.
     vocal_in: float = 0.0  # onde o recorte começa, em segundos de A
     vocal_dur: float | None = None  # duração do recorte em segundos de A; None = até o fim
+    # Sincronização frase-a-frase (Fase 1a). None = âncora única (comportamento atual).
+    # Cada tupla = (t_no_vocal_s_de_A_relativo_ao_recorte, t_na_base_s_de_B_absoluto).
+    phrase_anchors: list[tuple[float, float]] | None = None
+
+
+@dataclass
+class EmbedFeatures:
+    """Features para a mashability aprendida (Fase 2) — injetadas pelo pipeline.
+
+    Mantém `compatibility.py` puro: os embeddings COCOLA (e a similaridade
+    bilinear pré-computada) são calculados em `mashability.py`/`pipeline` e
+    passados prontos, espelhando o padrão de `metricas_por_segmento_de_audio`
+    fora do `alignment.py`. Os campos da direção reversa (`*_b`/`*_a`) habilitam
+    a assimetria A→B vs B→A; os demais são features baratas opcionais.
+    """
+
+    emb_vocal: list[float]  # embedding COCOLA do vocal isolado (A)
+    emb_instr: list[float]  # embedding COCOLA do instrumental (B)
+    emb_vocal_b: list[float] | None = None  # vocal de B (direção reversa)
+    emb_instr_a: list[float] | None = None  # instrumental de A (direção reversa)
+    centroide: float | None = None  # centroide espectral (diferença de brilho)
+    mfcc: list[float] | None = None  # MFCC médios (timbre)
+    rms_por_stem: dict | None = None  # loudness por stem (dBFS)
