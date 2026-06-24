@@ -79,6 +79,26 @@ def spearman_h2(
     return {"n": n, "rho": float(rho), "p": float(p), "ci95": ci}
 
 
+def comparar_rankers(
+    learned: np.ndarray, h2_total: np.ndarray, notas: np.ndarray, **kw
+) -> dict:
+    """Compara o ranker aprendido (cabeça COCOLA) vs o H2 puro pela correlação com as notas.
+
+    Critério da Fase 2c: a cabeça calibrada só se justifica se correlacionar **melhor**
+    com o painel que o H2 heurístico. Reusa :func:`spearman_h2` (com IC95% bootstrap);
+    `delta_rho > 0` e `cabeca_melhor=True` favorecem a cabeça.
+    """
+    s_learned = spearman_h2(learned, notas, **kw)
+    s_h2 = spearman_h2(h2_total, notas, **kw)
+    delta = s_learned["rho"] - s_h2["rho"]
+    return {
+        "learned": s_learned,
+        "h2": s_h2,
+        "delta_rho": float(delta),
+        "cabeca_melhor": bool(s_learned["rho"] > s_h2["rho"]),
+    }
+
+
 def binomial_ab(n_prefere_proposto: int, n_total: int) -> dict:
     """Teste binomial da escolha forçada A/B (H1 confirmatório)."""
     if n_total == 0:
