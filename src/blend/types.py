@@ -51,10 +51,14 @@ class AlignmentPlan:
     target_segment: Segment  # seção da base onde o vocal entra
     bpm_ratio: float  # fator de time-stretch aplicado ao vocal
     pitch_shift_semitones: float  # transposição do vocal
-    vocal_offset: float  # quando o vocal começa, em segundos da base
-    mode: str = "proposto"  # 'baseline' | 'proposto'
+    vocal_offset: float  # quando o vocal começa, em segundos da base JÁ esticada
+    mode: str = "proposto"  # 'baseline' | 'proposto' | 'manual'
     nivel_fallback: int = 0  # 0 = caminho principal; 1–4 = degraus do fallback (auditoria P4)
     # Recorte do vocal no tempo de A (antes do stretch) — preenchido pelo pipeline,
     # que detecta atividade vocal no stem e limita a duração à seção alvo.
     vocal_in: float = 0.0  # onde o recorte começa, em segundos de A
     vocal_dur: float | None = None  # duração do recorte em segundos de A; None = até o fim
+    # BPM alvo do mashup: a BASE também é esticada (sem mudar de tom) e o vocal
+    # mira o alvo em vez do BPM da base. 1.0/None = mantém o BPM da base.
+    base_ratio: float = 1.0  # fator de time-stretch aplicado ao instrumental de B
+    bpm_alvo: float | None = None  # BPM final pedido (diagnóstico/UI)

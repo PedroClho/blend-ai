@@ -8,7 +8,7 @@ import numpy as np
 
 from .alignment import align
 from .compatibility import compatibility_score
-from .types import AlignmentPlan, ScoreCompat, TrackAnalysis
+from .types import AlignmentPlan, ScoreCompat, Segment, TrackAnalysis
 
 
 @dataclass
@@ -79,6 +79,75 @@ def _recorte_vocal(
     return ini, dur
 
 
+def _secao_no_instante(segments: list[Segment], t: float) -> Segment | None:
+    """Seção que contém o instante `t` (start <= t < end); None se nenhuma."""
+    for seg in segments:
+        if seg.start <= t < seg.end:
+            return seg
+    return None
+
+
+def aplicar_ancoras_manuais(
+    plan: AlignmentPlan,
+    an_base: TrackAnalysis,
+    vocal_in: float | None,
+    vocal_dur: float | None,
+    vocal_offset: float | None,
+) -> AlignmentPlan:
+    """Overrides do DJ (ancoragem manual) sobre o plano automático — in-place.
+
+    Qualquer âncora presente marca `plan.mode = "manual"` (rastreável no resultado
+    e fora do braço baseline/proposto do experimento). Se a POSIÇÃO na base mudou
+    (`vocal_offset`), `target_segment` é re-rotulado para a seção de B que contém
+    o novo offset — a leitura da UI ("vocal entra na seção X") continua verdadeira.
+    `vocal_in`/`vocal_dur` em tempo de A; `vocal_offset` em tempo de B (segundos).
+    """
+    if vocal_in is not None:
+        plan.vocal_in = vocal_in
+    if vocal_dur is not None:
+        plan.vocal_dur = vocal_dur
+    if vocal_offset is not None:
+        plan.vocal_offset = vocal_offset
+        alvo = _secao_no_instante(an_base.segments, vocal_offset)
+        if alvo is None:  # fora de qualquer seção detectada: seção sintética
+            fins = [s.end for s in an_base.segments] + an_base.downbeats + [vocal_offset + 1.0]
+            alvo = Segment(vocal_offset, max(fins), "manual")
+        plan.target_segment = alvo
+    if any(v is not None for v in (vocal_in, vocal_dur, vocal_offset)):
+        plan.mode = "manual"
+    return plan
+
+
+def aplicar_bpm_alvo(
+    plan: AlignmentPlan,
+    bpm_vocal: float,
+    bpm_base: float,
+    bpm_alvo: float | None,
+) -> AlignmentPlan:
+    """Leva o mashup para `bpm_alvo`: base E vocal esticados para o alvo — in-place.
+
+    A base ganha `base_ratio = alvo/bpm_base` (time-stretch puro, tom preservado);
+    o vocal tem o `bpm_ratio` RECALCULADO contra o alvo (com a mesma regra de
+    half/double-time do alinhamento, p/ gaps grandes tipo funk 130 × alvo 160).
+    `vocal_offset` foi escolhido no relógio ORIGINAL de B (waveform/âncora manual)
+    e é convertido para o relógio esticado (t → t/base_ratio). Chamar DEPOIS de
+    `aplicar_ancoras_manuais`. `bpm_alvo` None/igual ao da base = no-op.
+    """
+    if bpm_alvo is None or bpm_alvo <= 0 or bpm_base <= 0:
+        return plan
+    from .alignment import _escolher_bpm_ratio
+
+    base_ratio = bpm_alvo / bpm_base
+    plan.base_ratio = base_ratio
+    plan.bpm_alvo = bpm_alvo
+    plan.vocal_offset = plan.vocal_offset / base_ratio
+    if bpm_vocal and bpm_vocal > 0:
+        plan.bpm_ratio = _escolher_bpm_ratio(bpm_alvo, bpm_vocal)
+    else:  # sem BPM do vocal: mantém a relação com a base, só acompanha o alvo
+        plan.bpm_ratio = plan.bpm_ratio * base_ratio
+    return plan
+
+
 def make_mashup(
     path_vocal: str,
     path_base: str,
@@ -90,12 +159,18 @@ def make_mashup(
     vocal_in: float | None = None,
     vocal_dur: float | None = None,
     vocal_offset: float | None = None,
+    bpm_alvo: float | None = None,
+    analise_vocal: TrackAnalysis | None = None,
+    analise_base: TrackAnalysis | None = None,
 ) -> MashupResult:
     """Vocal de `path_vocal` sobre o instrumental de `path_base`.
 
     Fluxo: load → separação → análise (beat/downbeat/estrutura) → tom → score →
     alinhamento → síntese. Integra blend-audio (P1) + blend-mashup (P2).
     `on_stage` (opcional) recebe o nome da etapa ao iniciá-la (progresso na UI).
+    `analise_vocal`/`analise_base` pré-computadas (ex.: cache da API por hash do
+    arquivo) pulam `analyze()`; o tom só é estimado se `key_camelot` vier vazio.
+    `bpm_alvo`: leva base E vocal para esse BPM antes do merge (tom preservado).
     """
     from . import io, key, separation, synthesis
     from .analysis import analyze
@@ -114,18 +189,19 @@ def make_mashup(
     stems_base = separation.separate(base_samples, sr)
     vocal_only = separation.separate(voc_samples, sr)["vocals"]
 
-    # 3) análise rítmica/estrutural de ambas
+    # 3) análise rítmica/estrutural de ambas (pré-computada quando fornecida)
     _stage("analisando")
-    an_vocal = analyze(path_vocal, voc_samples, sr)
-    an_base = analyze(path_base, base_samples, sr)
+    an_vocal = analise_vocal if analise_vocal is not None else analyze(path_vocal, voc_samples, sr)
+    an_base = analise_base if analise_base is not None else analyze(path_base, base_samples, sr)
 
     # 4) tom → Camelot (Essentia); sem tom, o score harmônico fica neutro
     _stage("estimando_tom")
-    try:
-        an_vocal.key_camelot = key.estimate_key(voc_samples, sr)
-        an_base.key_camelot = key.estimate_key(base_samples, sr)
-    except Exception:
-        pass
+    for an, samples in ((an_vocal, voc_samples), (an_base, base_samples)):
+        if an.key_camelot is None:
+            try:
+                an.key_camelot = key.estimate_key(samples, sr)
+            except Exception:
+                pass
 
     # 5) score de compatibilidade (H2)
     score = compatibility_score(an_vocal, an_base)
@@ -143,14 +219,11 @@ def make_mashup(
         vocal_only, sr, an_vocal.bpm, an_vocal.downbeats, compassos=compassos
     )
     # overrides manuais (DJ-in-the-loop): a ancoragem escolhida na mão sobrescreve
-    # a detecção automática. Base do "Ver + ancorar" — vocal_in/dur em tempo de A
-    # (segundos), vocal_offset = posição do vocal na base B (segundos).
-    if vocal_in is not None:
-        plan.vocal_in = vocal_in
-    if vocal_dur is not None:
-        plan.vocal_dur = vocal_dur
-    if vocal_offset is not None:
-        plan.vocal_offset = vocal_offset
+    # a detecção automática (marca o plano como "manual" e re-rotula a seção alvo)
+    aplicar_ancoras_manuais(plan, an_base, vocal_in, vocal_dur, vocal_offset)
+
+    # BPM alvo (depois das âncoras: offset manual está no relógio original de B)
+    aplicar_bpm_alvo(plan, an_vocal.bpm, an_base.bpm, bpm_alvo)
 
     # 7) síntese: vocal de A sobre o instrumental de B
     _stage("sintetizando")

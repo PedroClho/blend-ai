@@ -105,14 +105,22 @@ def render(
     """Mixa o vocal de A (recortado/esticado/transposto) sobre o INSTRUMENTAL da base.
 
     Instrumental da base = todos os stems de B menos o vocal de B
-    (drums + bass + other). O vocal é recortado em [vocal_in, vocal_in+vocal_dur)
-    (tempo de A) antes do stretch e tem o ganho casado por RMS com o trecho do
-    instrumental onde entra. Retorna o mashup (canais, amostras) float32.
+    (drums + bass + other). Com `plan.base_ratio` ≠ 1 (BPM alvo), o instrumental
+    inteiro é esticado ANTES da mixagem (tom preservado — só tempo); o
+    `plan.vocal_offset` já chega no relógio esticado. O vocal é recortado em
+    [vocal_in, vocal_in+vocal_dur) (tempo de A) antes do stretch e tem o ganho
+    casado por RMS com o trecho do instrumental onde entra. Retorna o mashup
+    (canais, amostras) float32.
     """
     instr_parts = [v for k, v in base_stems.items() if k != "vocals"]
     instrumental = np.sum(instr_parts, axis=0).astype(np.float32)
     if instrumental.ndim == 1:
         instrumental = instrumental[np.newaxis, :]
+
+    if plan.base_ratio and abs(plan.base_ratio - 1.0) > 1e-4:
+        instrumental = _stretch_pitch(instrumental, sr, plan.base_ratio, 0.0)
+        if instrumental.ndim == 1:
+            instrumental = instrumental[np.newaxis, :]
 
     voc = np.asarray(vocal, dtype=np.float32)
     if voc.ndim == 1:
