@@ -37,8 +37,19 @@ export function Result({ job, onNovo }: { job: JobInfo; onNovo: () => void }) {
   const a = r.analise_vocal;
   const b = r.analise_base;
 
-  // seções da base + janela do vocal desenhadas sobre o waveform do mashup
+  // janela do vocal sobre a onda + seções na tira. Com BPM alvo a base foi
+  // esticada: converte os tempos da análise (relógio original de B) p/ o mashup
   const regioes = useMemo(() => buildRegions(r), [r]);
+  const baseRatio = plan.base_ratio || 1;
+  const secoesMashup = useMemo(
+    () =>
+      (b?.segments ?? []).map((s) => ({
+        ...s,
+        start: s.start / baseRatio,
+        end: s.end / baseRatio,
+      })),
+    [b, baseRatio],
+  );
   const rotulos = useMemo(
     () => [...new Set((b?.segments ?? []).map((s) => s.label))],
     [b],
@@ -65,15 +76,18 @@ export function Result({ job, onNovo }: { job: JobInfo; onNovo: () => void }) {
         <div className="mt-4 mb-2 flex items-baseline justify-between">
           <span className="microlabel">estrutura da base × entrada do vocal</span>
           <span className="font-mono text-[11px] text-ink-faint">
-            {plan.nivel_fallback === 0
-              ? `seção real: ${plan.secao.label}`
-              : `fallback nível ${plan.nivel_fallback}`}
+            {plan.mode === "manual"
+              ? `ancoragem manual · seção ${plan.secao.label}`
+              : plan.nivel_fallback === 0
+                ? `seção real: ${plan.secao.label}`
+                : `fallback nível ${plan.nivel_fallback}`}
           </span>
         </div>
 
         <Waveform
           src={r.audio_url}
           regions={regioes}
+          secoes={secoesMashup}
           waveColor="#b9bfca"
           progressColor="#6d5ef6"
           accent="#6d5ef6"
@@ -129,7 +143,7 @@ export function Result({ job, onNovo }: { job: JobInfo; onNovo: () => void }) {
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Leitura rotulo="stretch" valor={`×${plan.bpm_ratio.toFixed(3)}`} />
+          <Leitura rotulo="stretch vocal" valor={`×${plan.bpm_ratio.toFixed(3)}`} />
           <Leitura
             rotulo="transposição"
             valor={`${plan.pitch_shift_semitones >= 0 ? "+" : ""}${plan.pitch_shift_semitones.toFixed(0)}`}
@@ -145,6 +159,13 @@ export function Result({ job, onNovo }: { job: JobInfo; onNovo: () => void }) {
             unidade="bpm"
           />
         </div>
+
+        {plan.bpm_alvo != null && (
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Leitura rotulo="bpm final" valor={plan.bpm_alvo.toFixed(0)} unidade="bpm" destaque />
+            <Leitura rotulo="stretch base" valor={`×${plan.base_ratio.toFixed(3)}`} />
+          </div>
+        )}
 
         {(a?.key_camelot || b?.key_camelot) && (
           <p className="mt-3 font-mono text-[11px] text-ink-soft">

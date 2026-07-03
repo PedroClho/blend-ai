@@ -1,21 +1,52 @@
 /** Helpers do waveform (wavesurfer): cores de seção, regions e formatação. */
 import type { Resultado } from "./api";
 
-/** Cor por rótulo de seção (assinatura visual do alinhamento estrutura-aware). */
+/** Cor por rótulo de seção (assinatura visual do alinhamento estrutura-aware).
+ * Pensada para render SÓLIDO na tira de seções — matizes bem separados entre
+ * rótulos que aparecem juntos em EDM (verse/chorus/inst/break/drop). */
 export const COR_SECAO: Record<string, string> = {
-  intro: "#cbd2dd",
-  verse: "#93b8f8",
+  intro: "#94a3b8",
+  verse: "#3b82f6",
   chorus: "#6d5ef6",
   drop: "#ef4444",
-  bridge: "#14b8a6",
+  bridge: "#ec4899",
+  solo: "#14b8a6",
   inst: "#10b981",
   break: "#f59e0b",
-  outro: "#cbd2dd",
-  start_loop: "#e4e7ee",
-  end: "#e4e7ee",
+  outro: "#94a3b8",
+  start: "#d5dae3",
+  end: "#d5dae3",
+  start_loop: "#d5dae3",
+  silence: "#d5dae3",
   unknown: "#aab1bd",
   full: "#aab1bd",
 };
+
+/** Cor de texto legível sobre a cor de seção (luminância YIQ). */
+export function textoContraste(hex: string): string {
+  const h = hex.replace("#", "");
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return (r * 299 + g * 587 + b * 114) / 1000 >= 150 ? "#14171f" : "#ffffff";
+}
+
+/** Funde seções adjacentes de mesmo rótulo (o allin1 fragmenta tech house em
+ * blocos de 4–8 compassos — sem fundir, a tira vira confete ilegível). */
+export function fundirSecoes(
+  segments: { start: number; end: number; label: string }[],
+): { start: number; end: number; label: string }[] {
+  const out: { start: number; end: number; label: string }[] = [];
+  for (const s of segments) {
+    const ult = out[out.length - 1];
+    if (ult && ult.label === s.label && s.start - ult.end < 0.05) {
+      ult.end = Math.max(ult.end, s.end);
+    } else {
+      out.push({ ...s });
+    }
+  }
+  return out;
+}
 
 export function corSecao(label: string): string {
   return COR_SECAO[label] ?? COR_SECAO.unknown;
@@ -51,30 +82,21 @@ export interface RegionSpec {
 }
 
 /**
- * Constrói as regions do resultado: blocos de seção da base (allin1) + a janela
- * onde o vocal entra. Mesmo mapeamento do antigo SectionTimeline — a base entra
- * inteira no mashup, então os tempos das seções batem com o waveform do mashup.
+ * Region da janela do vocal sobre o waveform do mashup (resultado). A estrutura
+ * da base agora vive na tira de seções sólida abaixo da onda (legível), não em
+ * lavagens de cor sobre a onda — sobre a onda fica só a marca do vocal.
  */
 export function buildRegions(resultado: Resultado): RegionSpec[] {
   const base = resultado.analise_base;
   const { plan } = resultado;
+  // tempos da análise de B estão no relógio ORIGINAL; com BPM alvo a base foi
+  // esticada — divide por base_ratio p/ cair no relógio do mashup renderizado
+  const br = plan.base_ratio || 1;
   const dur = Math.max(
     resultado.duracao,
-    base?.segments.at(-1)?.end ?? 0,
-    plan.secao.end,
+    (base?.segments.at(-1)?.end ?? 0) / br,
+    plan.secao.end / br,
   );
-
-  const segmentos =
-    base && base.segments.length > 0
-      ? base.segments
-      : [{ start: 0, end: dur, label: "unknown" }];
-
-  const regs: RegionSpec[] = segmentos.map((s, i) => ({
-    id: `seg-${i}`,
-    start: s.start,
-    end: Math.max(s.end, s.start + 0.01),
-    color: hexParaRgba(corSecao(s.label), 0.16),
-  }));
 
   const vocalIni = plan.vocal_offset;
   const vocalFim = Math.min(
@@ -82,14 +104,14 @@ export function buildRegions(resultado: Resultado): RegionSpec[] {
     plan.vocal_offset +
       (plan.vocal_dur != null ? plan.vocal_dur / plan.bpm_ratio : dur),
   );
-  regs.push({
-    id: "vocal",
-    start: vocalIni,
-    end: Math.max(vocalFim, vocalIni + 0.01),
-    color: hexParaRgba("#3b82f6", 0.18),
-    content: "vocal A",
-    outline: "#3b82f6",
-  });
-
-  return regs;
+  return [
+    {
+      id: "vocal",
+      start: vocalIni,
+      end: Math.max(vocalFim, vocalIni + 0.01),
+      color: hexParaRgba("#3b82f6", 0.18),
+      content: "vocal A",
+      outline: "#3b82f6",
+    },
+  ];
 }

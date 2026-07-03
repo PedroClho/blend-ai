@@ -1,4 +1,6 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
+import { ROTULO_ETAPA_CURTO, type EstadoAnalise, type Segmento } from "../lib/api";
+import type { RegionSpec } from "../lib/wavesurfer";
 import { Waveform } from "./Waveform";
 
 interface DeckProps {
@@ -9,6 +11,17 @@ interface DeckProps {
   arquivo: File | null;
   onArquivo: (f: File | null) => void;
   desabilitado?: boolean;
+  /** análise prévia (modo manual): chips de bpm/tom/seções + progresso. */
+  analise?: EstadoAnalise;
+  /** âncora/janela do vocal desenhada sobre a onda. */
+  regioes?: RegionSpec[];
+  /** estrutura musical — tira sólida de seções abaixo da onda. */
+  secoes?: Segmento[];
+  /** posição atual do player deste deck (p/ "marcar no cursor" da App). */
+  onPosicao?: (t: number) => void;
+  alturaOnda?: number;
+  /** readout da âncora deste deck (injetado pela App no modo manual). */
+  children?: ReactNode;
 }
 
 const ACEITOS = [".mp3", ".wav", ".flac"];
@@ -19,6 +32,45 @@ const CORES_WAVE: Record<string, { onda: string; progresso: string }> = {
   "bg-other": { onda: "#8fd9bd", progresso: "#10b981" },
 };
 
+function ChipsAnalise({ analise }: { analise: EstadoAnalise }) {
+  if (analise.status === "rodando") {
+    return (
+      <p className="microlabel mt-2 flex items-center gap-1.5 !text-brand">
+        <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-brand" />
+        analisando · {ROTULO_ETAPA_CURTO[analise.etapa ?? ""] ?? analise.etapa}
+      </p>
+    );
+  }
+  if (analise.status === "erro") {
+    return (
+      <p className="microlabel mt-2 !normal-case !text-bad" title={analise.erro}>
+        análise falhou — {analise.erro?.slice(0, 60)}
+      </p>
+    );
+  }
+  if (analise.status === "pronta" && analise.dados) {
+    const d = analise.dados;
+    return (
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        {[
+          `${d.bpm.toFixed(1)} bpm`,
+          d.key_camelot ?? "tom ?",
+          `${d.segments.length} seções`,
+          ...(d.cache ? ["cache"] : []),
+        ].map((chip) => (
+          <span
+            key={chip}
+            className="microlabel rounded-full border border-line bg-surface px-2 py-0.5 !text-ink-soft"
+          >
+            {chip}
+          </span>
+        ))}
+      </div>
+    );
+  }
+  return null;
+}
+
 export function Deck({
   letra,
   papel,
@@ -27,6 +79,12 @@ export function Deck({
   arquivo,
   onArquivo,
   desabilitado,
+  analise,
+  regioes,
+  secoes,
+  onPosicao,
+  alturaOnda = 56,
+  children,
 }: DeckProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [arrastando, setArrastando] = useState(false);
@@ -86,7 +144,10 @@ export function Deck({
               waveColor={wave.onda}
               progressColor={wave.progresso}
               accent={wave.progresso}
-              height={56}
+              height={alturaOnda}
+              regions={regioes}
+              secoes={secoes}
+              onPosicao={onPosicao}
             />
             <div className="mt-2 flex items-center justify-between gap-2">
               <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-ink">
@@ -103,6 +164,8 @@ export function Deck({
                 trocar
               </button>
             </div>
+            {analise && <ChipsAnalise analise={analise} />}
+            {children}
           </div>
         ) : (
           <button
