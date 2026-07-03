@@ -1,0 +1,698 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blend AI — Guia de estudo do pipeline</title>
+<style>
+  :root {
+    --paper: #fcfcfd;
+    --surface: #f5f6f9;
+    --surface-2: #edeff4;
+    --line: #e4e7ee;
+    --ink: #14171f;
+    --ink-soft: #6a7180;
+    --ink-faint: #9aa1ae;
+    --brand: #6d5ef6;
+    --brand-deep: #4f46e5;
+    --brand-soft: #eef0fe;
+    --vocal: #3b82f6;
+    --drums: #f59e0b;
+    --bass: #ef4444;
+    --other: #10b981;
+    --ok: #10b981;
+    --warn: #f59e0b;
+    --bad: #ef4444;
+    --font-display: "Unbounded", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-sans: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, Consolas, "Cascadia Mono", monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.62;
+    margin: 0;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 0 28px 96px; }
+
+  /* ---------- assinatura: barra de estrutura musical ---------- */
+  .structbar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; gap: 2px; }
+  .structbar span { display: block; height: 100%; }
+  .sb-intro  { background: #cbd2dd; }
+  .sb-verse  { background: #93b8f8; }
+  .sb-chorus { background: #6d5ef6; }
+  .sb-break  { background: #f59e0b; }
+  .sb-drop   { background: #ef4444; }
+  .sb-inst   { background: #10b981; }
+  .sb-outro  { background: #cbd2dd; }
+
+  /* ---------- header ---------- */
+  header { padding: 64px 0 40px; }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--brand-deep);
+    margin: 0 0 14px;
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-size: clamp(30px, 5vw, 44px);
+    font-weight: 800;
+    letter-spacing: -0.015em;
+    line-height: 1.12;
+    margin: 0 0 14px;
+    text-wrap: balance;
+  }
+  .lede { font-size: 18px; color: var(--ink-soft); max-width: 62ch; margin: 0 0 28px; text-wrap: pretty; }
+  .lede strong { color: var(--ink); }
+
+  /* ---------- seções ---------- */
+  section { margin-top: 64px; }
+  h2 {
+    font-family: var(--font-display);
+    font-size: 24px;
+    font-weight: 750;
+    letter-spacing: -0.01em;
+    margin: 0 0 6px;
+    text-wrap: balance;
+  }
+  .h2-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 10px;
+  }
+  .h2-sub { color: var(--ink-soft); margin: 0 0 24px; max-width: 68ch; }
+  h3 { font-size: 17px; font-weight: 650; margin: 0 0 8px; }
+  p { margin: 0 0 12px; }
+  code, .mono { font-family: var(--font-mono); font-size: 0.86em; }
+  code { background: var(--surface-2); padding: 2px 6px; border-radius: 4px; white-space: nowrap; }
+  pre {
+    background: #14171f; color: #e8eaf1;
+    border-radius: 10px; padding: 16px 20px;
+    overflow-x: auto; font-family: var(--font-mono);
+    font-size: 13px; line-height: 1.7; margin: 12px 0;
+  }
+  pre code { background: none; padding: 0; color: inherit; white-space: pre; }
+  pre .cm { color: #8b93a7; }
+  a { color: var(--brand-deep); }
+
+  /* ---------- badges de status ---------- */
+  .badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0 0; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: var(--font-mono); font-size: 12.5px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 999px; padding: 5px 13px;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .dot-ok { background: var(--ok); }
+  .dot-warn { background: var(--warn); }
+  .dot-brand { background: var(--brand); }
+
+  /* ---------- diagrama do pipeline ---------- */
+  .pipe { display: flex; flex-direction: column; gap: 0; margin: 24px 0 8px; }
+  .pipe-stage {
+    display: grid; grid-template-columns: 44px 1fr; gap: 0 18px;
+    position: relative; padding: 0 0 26px;
+  }
+  .pipe-stage:last-child { padding-bottom: 0; }
+  .pipe-stage::before {
+    content: ""; position: absolute; left: 21px; top: 44px; bottom: 0;
+    width: 2px; background: var(--line);
+  }
+  .pipe-stage:last-child::before { display: none; }
+  .pipe-num {
+    width: 44px; height: 44px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 15px; font-weight: 600;
+    background: var(--surface); border: 1px solid var(--line); color: var(--ink-soft);
+    position: relative; z-index: 1;
+  }
+  .pipe-stage.star .pipe-num { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .pipe-body { padding-top: 4px; min-width: 0; }
+  .pipe-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+  .pipe-title h3 { margin: 0; }
+  .pipe-tool { font-family: var(--font-mono); font-size: 12px; color: var(--ink-faint); }
+  .pipe-file { font-family: var(--font-mono); font-size: 12px; color: var(--brand-deep); }
+  .pipe-body p { color: var(--ink-soft); margin-bottom: 6px; max-width: 68ch; }
+  .pipe-body p strong { color: var(--ink); font-weight: 600; }
+  .defesa {
+    margin-top: 10px; padding: 10px 14px;
+    background: var(--brand-soft); border-radius: 8px;
+    font-size: 14.5px; color: var(--ink); max-width: 66ch;
+  }
+  .defesa::before {
+    content: "SE PERGUNTAREM"; display: block;
+    font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.14em;
+    color: var(--brand-deep); margin-bottom: 3px;
+  }
+  .star-note { font-size: 13.5px; color: var(--ink-faint); margin-top: 14px; }
+  .star-note .star-chip { color: #fff; background: var(--brand); border-radius: 5px; padding: 1px 7px; font-family: var(--font-mono); font-size: 11.5px; }
+
+  /* ---------- cards genéricos ---------- */
+  .card {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 24px; margin: 16px 0;
+  }
+  .card h3 { margin-bottom: 10px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 720px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  /* ---------- fórmula ---------- */
+  .formula {
+    font-family: var(--font-mono); font-size: 15px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 10px; padding: 16px 20px; margin: 14px 0;
+    overflow-x: auto; white-space: nowrap;
+  }
+  .formula b { color: var(--brand-deep); font-weight: 600; }
+
+  /* ---------- tabelas ---------- */
+  .tbl-wrap { overflow-x: auto; margin: 14px 0; border: 1px solid var(--line); border-radius: 10px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+  th {
+    text-align: left; font-family: var(--font-mono); font-size: 11.5px;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint);
+    padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }
+  td { padding: 10px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* ---------- comparação baseline × proposto ---------- */
+  .versus { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 18px 0; }
+  @media (max-width: 720px) { .versus { grid-template-columns: 1fr; } }
+  .vs-col { border-radius: 14px; padding: 20px 22px; border: 1px solid var(--line); background: var(--surface); }
+  .vs-col.proposto { border-color: var(--brand); background: var(--brand-soft); }
+  .vs-tag {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em;
+    text-transform: uppercase; margin-bottom: 8px; color: var(--ink-faint);
+  }
+  .vs-col.proposto .vs-tag { color: var(--brand-deep); }
+  .vs-col h3 { margin-bottom: 10px; }
+  .vs-col ul { margin: 0; padding-left: 18px; color: var(--ink-soft); }
+  .vs-col li { margin-bottom: 7px; }
+  .vs-col li strong { color: var(--ink); font-weight: 600; }
+
+  /* ---------- cascata de fallback ---------- */
+  .ladder { display: flex; flex-direction: column; gap: 8px; margin: 16px 0; }
+  .rung {
+    display: grid; grid-template-columns: 74px 1fr; gap: 14px; align-items: baseline;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 10px; padding: 12px 16px;
+  }
+  .rung-lv { font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--brand-deep); white-space: nowrap; }
+  .rung p { margin: 0; font-size: 14.5px; color: var(--ink-soft); }
+  .rung p strong { color: var(--ink); font-weight: 600; }
+
+  /* ---------- hipóteses ---------- */
+  .hyp { display: grid; grid-template-columns: 56px 1fr; gap: 18px; padding: 20px 0; border-bottom: 1px solid var(--line); }
+  .hyp:last-child { border-bottom: none; }
+  .hyp-id {
+    font-family: var(--font-display); font-weight: 800; font-size: 22px;
+    color: var(--brand); padding-top: 2px;
+  }
+  .hyp-body p { color: var(--ink-soft); max-width: 66ch; }
+  .hyp-body p strong { color: var(--ink); }
+  .status {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: var(--font-mono); font-size: 12px; border-radius: 999px;
+    padding: 3px 12px; margin-left: 10px; vertical-align: middle;
+  }
+  .st-ok { background: #e7f7f0; color: #0b7a55; }
+  .st-warn { background: #fdf3e3; color: #a16207; }
+  .st-info { background: var(--brand-soft); color: var(--brand-deep); }
+
+  /* ---------- números / cheat sheet ---------- */
+  .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin: 18px 0; }
+  .stat {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 12px; padding: 14px 16px;
+  }
+  .stat .v {
+    font-family: var(--font-mono); font-size: 21px; font-weight: 600;
+    font-variant-numeric: tabular-nums; letter-spacing: -0.01em;
+  }
+  .stat .k { font-size: 13px; color: var(--ink-soft); margin-top: 2px; line-height: 1.4; }
+
+  /* ---------- slides ---------- */
+  .slides { counter-reset: slide; margin: 18px 0; }
+  .slide {
+    display: grid; grid-template-columns: 40px 1fr; gap: 16px;
+    padding: 14px 0; border-bottom: 1px solid var(--line);
+  }
+  .slide:last-child { border-bottom: none; }
+  .slide-n {
+    counter-increment: slide;
+    font-family: var(--font-mono); font-size: 13px; color: var(--ink-faint);
+    padding-top: 3px;
+  }
+  .slide-n::before { content: counter(slide, decimal-leading-zero); }
+  .slide h3 { font-size: 15.5px; margin-bottom: 3px; }
+  .slide p { font-size: 14.5px; color: var(--ink-soft); margin: 0; max-width: 66ch; }
+
+  /* ---------- FAQ banca ---------- */
+  .faq { margin: 18px 0; }
+  .faq details {
+    border: 1px solid var(--line); border-radius: 12px;
+    background: var(--surface); margin-bottom: 10px; overflow: hidden;
+  }
+  .faq summary {
+    cursor: pointer; padding: 14px 18px; font-weight: 600; font-size: 15px;
+    list-style: none; display: flex; gap: 12px; align-items: baseline;
+  }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary::before {
+    content: "+"; font-family: var(--font-mono); color: var(--brand);
+    font-weight: 600; flex: none;
+  }
+  .faq details[open] summary::before { content: "–"; }
+  .faq details[open] summary { border-bottom: 1px solid var(--line); }
+  .faq .a { padding: 14px 18px 16px 40px; color: var(--ink-soft); font-size: 14.5px; }
+  .faq .a strong { color: var(--ink); }
+  .faq .a code { font-size: 0.9em; }
+
+  summary:focus-visible, a:focus-visible {
+    outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 4px;
+  }
+
+  .footer-note {
+    margin-top: 72px; padding-top: 20px; border-top: 1px solid var(--line);
+    font-size: 13px; color: var(--ink-faint); font-family: var(--font-mono);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .faq details .a { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">PAV · UFG · Trabalho final · guia de estudo — 2026-07-02</p>
+  <h1>Blend AI — como o produto está hoje</h1>
+  <p class="lede">
+    <strong>Uma frase para abrir a apresentação:</strong> o Blend AI pega o vocal de uma faixa e o
+    encaixa sobre o instrumental de outra, casando tempo, tom e — o diferencial —
+    a <strong>estrutura musical</strong>: break com break, drop com drop.
+  </p>
+  <div class="structbar" aria-hidden="true">
+    <span class="sb-intro" style="width:10%"></span>
+    <span class="sb-verse" style="width:18%"></span>
+    <span class="sb-chorus" style="width:16%"></span>
+    <span class="sb-break" style="width:8%"></span>
+    <span class="sb-drop" style="width:14%"></span>
+    <span class="sb-verse" style="width:14%"></span>
+    <span class="sb-inst" style="width:12%"></span>
+    <span class="sb-outro" style="width:8%"></span>
+  </div>
+  <div class="badges">
+    <span class="badge"><span class="dot dot-ok"></span>Pipeline ponta-a-ponta funcionando</span>
+    <span class="badge"><span class="dot dot-ok"></span>102 testes em <span class="mono">tests/</span></span>
+    <span class="badge"><span class="dot dot-ok"></span>SPA React + API FastAPI</span>
+    <span class="badge"><span class="dot dot-ok"></span>Matriz H2: 66 pares</span>
+    <span class="badge"><span class="dot dot-warn"></span>Painel H1: desenhado, não coletado</span>
+  </div>
+</header>
+
+<!-- ============================================================ -->
+<section id="pipeline">
+  <p class="h2-eyebrow">Parte 1</p>
+  <h2>O pipeline, etapa a etapa</h2>
+  <p class="h2-sub">
+    É a ordem exata do <code>make_mashup()</code> em <code>src/blend/pipeline.py</code> — a mesma
+    checklist que a UI mostra durante o processamento. As etapas marcadas são a contribuição
+    central do trabalho.
+  </p>
+
+  <div class="pipe">
+
+    <div class="pipe-stage">
+      <div class="pipe-num">1</div>
+      <div class="pipe-body">
+        <div class="pipe-title"><h3>Carregamento</h3> <span class="pipe-file">io.py</span></div>
+        <p>Faixa A (dona do vocal) e faixa B (dona da base) entram em estéreo 44.1&nbsp;kHz.</p>
+      </div>
+    </div>
+
+    <div class="pipe-stage">
+      <div class="pipe-num">2</div>
+      <div class="pipe-body">
+        <div class="pipe-title"><h3>Separação de fontes</h3> <span class="pipe-tool">Demucs v4 · htdemucs</span> <span class="pipe-file">separation.py</span></div>
+        <p>Cada faixa vira 4 stems: <strong style="color:var(--vocal)">vocals</strong>,
+        <strong style="color:var(--drums)">drums</strong>,
+        <strong style="color:var(--bass)">bass</strong>,
+        <strong style="color:var(--other)">other</strong>. Roda em CUDA com fallback automático
+        para CPU se der OOM. Da faixa A só o stem de vocal é usado; da B, os três instrumentais.</p>
+        <div class="defesa">Por que <code>htdemucs</code> e não o <code>htdemucs_ft</code>? O <code>_ft</code> é um bag de 4 modelos e estoura os 16&nbsp;GB de RAM / 6&nbsp;GB de VRAM da RTX&nbsp;2060. O bleed residual (~8.2&nbsp;dB SDR) é constante entre os dois braços do experimento — não confunde a H1.</div>
+      </div>
+    </div>
+
+    <div class="pipe-stage">
+      <div class="pipe-num">3</div>
+      <div class="pipe-body">
+        <div class="pipe-title"><h3>Análise rítmica e estrutural</h3> <span class="pipe-tool">allin1 (fallback: madmom)</span> <span class="pipe-file">analysis.py</span></div>
+        <p>O <strong>allin1</strong> entrega, num pacote só: BPM, beats, <strong>downbeats</strong>
+        (início de compasso) e <strong>seções rotuladas</strong> (intro / verse / chorus / drop…).
+        Se falhar, cai no madmom (DBNDownBeat) — só beats/downbeats, sem seções.</p>
+        <div class="defesa">O rótulo de seção é o insumo direto da H1: sem ele o alinhamento estrutura-aware não sabe onde é o groove. Foi por isso que valeu compilar o NATTEN na marra dentro do Docker.</div>
+      </div>
+    </div>
+
+    <div class="pipe-stage">
+      <div class="pipe-num">4</div>
+      <div class="pipe-body">
+        <div class="pipe-title"><h3>Tom → Camelot</h3> <span class="pipe-tool">Essentia · perfil EDMA</span> <span class="pipe-file">key.py</span></div>
+        <p><code>KeyExtractor</code> estima o tom e <code>to_camelot()</code> converte para a roda
+        Camelot (a notação de DJ: 8A, 9B…). <code>pitch_shift_para_compatibilizar()</code> calcula a
+        <strong>menor transposição em [−6,&nbsp;+6] semitons</strong> que deixa o vocal compatível
+        com a base, preservando o modo do vocal (alvos: nº da base −1, igual ou +1).</p>
+        <div class="defesa">Validação do tom: o Rekordbox é usado como silver standard no domínio-alvo (ground truth em <code>data/rekordbox/groundtruth.csv</code>). O perfil EDMA do Essentia é o recomendado para música eletrônica.</div>
+      </div>
+    </div>
+
+    <div class="pipe-stage star">
+      <div class="pipe-num">★</div>
+      <div class="pipe-body">
+        <div class="pipe-title"><h3>Score de compatibilidade (H2)</h3> <span class="pipe-file">compatibility.py</span></div>
+        <p>Antes de mixar, um número em [0,&nbsp;1] prevê se o par combina — detalhado na Parte&nbsp;2.</p>
+      </div>
+    </div>
+
+    <div class="pipe-stage star">
+      <div class="pipe-num">★</div>
+      <div class="pipe-body">
+        <div class="pipe-title"><h3>Alinhamento estrutura-aware (H1)</h3> <span class="pipe-file">alignment.py</span></div>
+        <p>Escolhe <em>em qual seção da base</em> o vocal entra e ancora no downbeat certo —
+        detalhado na Parte&nbsp;3. É puro sobre <code>TrackAnalysis</code>: não lê áudio, só a análise.</p>
+      </div>
+    </div>
+
+    <div class="pipe-stage">
+      <div class="pipe-num">7</div>
+      <div class="pipe-body">
+        <div class="pipe-title"><h3>Recorte do vocal</h3> <span class="pipe-file">pipeline.py</span></div>
+        <p>O trecho vocal tem comprimento fixo de <strong>16 compassos de A</strong>
+        (<code>CLIPE_COMPASSOS</code>, ~30&nbsp;s a 130&nbsp;BPM), escolhido pela janela de
+        <strong>maior energia RMS</strong> do stem vocal, ancorada num downbeat.
+        Overrides manuais <code>vocal_in / vocal_dur / vocal_offset</code> deixam o DJ mandar
+        na máquina ("IA sugere, DJ ancora").</p>
+        <div class="defesa">Invariante do experimento justo: baseline e proposto usam <strong>exatamente o mesmo trecho vocal</strong> — só a colocação na base muda. Isso corrigiu um confundidor fatal da H1 (antes, o baseline usava outro trecho e outra duração).</div>
+      </div>
+    </div>
+
+    <div class="pipe-stage">
+      <div class="pipe-num">8</div>
+      <div class="pipe-body">
+        <div class="pipe-title"><h3>Síntese e mixagem</h3> <span class="pipe-tool">Rubber Band (pyrubberband)</span> <span class="pipe-file">synthesis.py</span></div>
+        <p>Na ordem: fades (20&nbsp;ms in / 200&nbsp;ms out) → time-stretch + pitch-shift →
+        <strong>passa-altas Butterworth 110&nbsp;Hz</strong> no vocal (não disputa com o baixo da base) →
+        <strong>ganho casado por RMS</strong> na banda do vocal (clamp 0.25–4.0×) →
+        <strong>ducking</strong> sidechain-lite (base atenua até −3.5&nbsp;dB sob o vocal) →
+        mixa no offset → normaliza pico. Instrumental da base = drums + bass + other.</p>
+        <div class="defesa">"Como o vocal não briga com a base?" → três mecanismos: HPF 110 Hz, ganho RMS casado e ducking. É o mesmo raciocínio de um mix de DJ, automatizado.</div>
+      </div>
+    </div>
+
+  </div>
+  <p class="star-note"><span class="star-chip">★</span>&ensp;= contribuição central — onde o método se diferencia do que já está resolvido na literatura (separação, beatmatch, transposição).</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="score">
+  <p class="h2-eyebrow">Parte 2 · contribuição ★</p>
+  <h2>Score de compatibilidade — a fórmula real</h2>
+  <p class="h2-sub">H2: esse número prevê a qualidade percebida do mashup. Três componentes, todos em [0,&nbsp;1], combinados com pesos.</p>
+
+  <div class="formula">
+    score = <b>0.50</b> · harmônico &nbsp;+&nbsp; <b>0.35</b> · tempo &nbsp;+&nbsp; <b>0.15</b> · energia
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3>Harmônico <span class="mono" style="color:var(--ink-faint)">— w 0.50</span></h3>
+      <p style="color:var(--ink-soft)">Tabela de qualidade chaveada pela <strong style="color:var(--ink)">distância no arco Camelot (0–6)</strong> e se as chaves têm a mesma letra (mesmo modo):</p>
+      <div class="tbl-wrap"><table>
+        <tr><th>Relação</th><th>Exemplo</th><th>Valor</th></tr>
+        <tr><td>Mesma chave</td><td class="num">8A → 8A</td><td class="num">1.00</td></tr>
+        <tr><td>Relativa (maior/menor)</td><td class="num">8A → 8B</td><td class="num">0.90</td></tr>
+        <tr><td>Quinta / quarta</td><td class="num">8A → 9A</td><td class="num">0.85</td></tr>
+        <tr><td>Diagonal</td><td class="num">8A → 9B</td><td class="num">0.55</td></tr>
+        <tr><td>Energy boost (+2)</td><td class="num">8A → 10A</td><td class="num">0.55</td></tr>
+        <tr><td>Tritono (pior caso)</td><td class="num">8A → 2A</td><td class="num">0.05</td></tr>
+        <tr><td>Tom ausente</td><td class="num">—</td><td class="num">0.50 (neutro)</td></tr>
+      </table></div>
+    </div>
+    <div class="card">
+      <h3>Tempo <span class="mono" style="color:var(--ink-faint)">— w 0.35</span></h3>
+      <p style="color:var(--ink-soft)">Escolhe o fator <code>f ∈ {0.5, 1, 2}</code> (half/double-time) que
+      minimiza o stretch necessário; a nota decai <strong style="color:var(--ink)">linearmente até zero em 8% de stretch</strong>
+      (<code>max_stretch_pct</code>). É o que permite funk ~130 sobre house ~126 sem soar esticado.</p>
+      <h3 style="margin-top:18px">Energia <span class="mono" style="color:var(--ink-faint)">— w 0.15</span></h3>
+      <p style="color:var(--ink-soft)"><code>clamp(1 − |Δ dBFS| / 6)</code>. Componente <strong style="color:var(--ink)">implementado mas ainda não injetado</strong>
+      pelo pipeline — os pesos são renormalizados: efetivo ≈ <span class="mono">0.588 harmônico / 0.412 tempo</span>.
+      Decisão consciente e pré-registrada.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Resultado já obtido — matriz sobre o ground truth Rekordbox</h3>
+    <p style="color:var(--ink-soft)"><code>eval/matriz_compatibilidade.py</code> · 12 faixas → <strong style="color:var(--ink)">66 pares</strong>, sem GPU. O score separa bem os extremos:</p>
+    <div class="tbl-wrap"><table>
+      <tr><th>Par</th><th>Camelot / BPM</th><th>Score</th></tr>
+      <tr><td>Swag × Get Naughty <em>(melhor)</em></td><td class="num">6A·6A / 130·130</td><td class="num">1.000</td></tr>
+      <tr><td>All We Got × Hands Up</td><td class="num">11A·11A / 128·128</td><td class="num">1.000</td></tr>
+      <tr><td>Zero Tolerance × Bad Wolf <em>(pior)</em></td><td class="num">6A·1A / 125·131</td><td class="num">0.224</td></tr>
+    </table></div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="alinhamento">
+  <p class="h2-eyebrow">Parte 3 · contribuição ★</p>
+  <h2>Alinhamento: baseline ingênuo × estrutura-aware</h2>
+  <p class="h2-sub">Os dois braços do experimento compartilham <strong>tudo</strong> (BPM ratio com half/double-time, transposição, mesmo trecho vocal) e diferem <strong>só</strong> em duas coisas: qual seção da base recebe o vocal e onde ele ancora.</p>
+
+  <div class="versus">
+    <div class="vs-col">
+      <div class="vs-tag">Baseline ingênuo</div>
+      <h3>"Cola no primeiro downbeat"</h3>
+      <ul>
+        <li>Seção-alvo = <strong>a faixa inteira</strong> (sem noção de estrutura).</li>
+        <li>Vocal entra no <strong>1º downbeat da faixa</strong> — tipicamente em cima da intro.</li>
+        <li>É o que um beatmatch automático simples faz: casa BPM + tom e pronto.</li>
+      </ul>
+    </div>
+    <div class="vs-col proposto">
+      <div class="vs-tag">Proposto · estrutura-aware</div>
+      <h3>"Break com break, drop com drop"</h3>
+      <ul>
+        <li><code>escolher_secao_groove()</code> pontua as seções da base: <strong>w_vocalfit 0.45 · recência 0.25 · duração 0.20 · repetição 0.10</strong> + bônus 0.05 para chorus/drop; mínimo 8 compassos.</li>
+        <li>Seções de borda (intro, outro, break, build…) são evitadas.</li>
+        <li><code>_ancorar()</code>: 1º downbeat dentro da seção, <strong>+1 compasso</strong> se caiu na fronteira de seção longa (não joga a frase no riser/crash).</li>
+        <li>Hoje roda a <strong>variante determinística</strong> (vocal_fit não injetado — peso redistribuído). É a variante pré-registrada no protocolo.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 style="margin-top:28px">Cascata de fallback — "o proposto nunca é pior que o baseline"</h3>
+  <div class="ladder">
+    <div class="rung"><span class="rung-lv">Nível 0</span><p><strong>Caso ideal:</strong> seções GROOVE (verse/chorus/drop/inst) com ≥ 8 compassos. É onde o allin1 validado na RTX 2060 opera.</p></div>
+    <div class="rung"><span class="rung-lv">Nível 1</span><p>Sem groove elegível → qualquer seção <strong>não-borda</strong> com duração mínima.</p></div>
+    <div class="rung"><span class="rung-lv">Nível 2</span><p>Relaxa a duração mínima pela metade, ou pega a não-borda mais longa.</p></div>
+    <div class="rung"><span class="rung-lv">Nível 3</span><p>Sem seções (madmom): <strong>janela deslizante de 8 compassos</strong> começando após 10% da faixa (pula a intro às cegas).</p></div>
+    <div class="rung"><span class="rung-lv">Nível 4</span><p>Sem downbeats / BPM inválido → <strong>equivale ao baseline</strong>. Degradação graciosa garantida por construção.</p></div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="hipoteses">
+  <p class="h2-eyebrow">Parte 4</p>
+  <h2>As três hipóteses — estado honesto</h2>
+  <p class="h2-sub">Saber exatamente o que está provado, desenhado e pendente evita ser pego de surpresa pela banca.</p>
+
+  <div class="hyp">
+    <div class="hyp-id">H1</div>
+    <div class="hyp-body">
+      <h3>Estrutura &gt; alinhamento ingênuo <span class="status st-warn">infra pronta · painel não coletado</span></h3>
+      <p>Inserir o vocal com detecção de estrutura produz mashups mais musicais que o baseline.
+      <strong>Teste:</strong> avaliação subjetiva às cegas, Wilcoxon pareado + rank-biserial.
+      A infra está congelada (<code>eval/gera_estimulos.py</code> com IDs embaralhados/seed,
+      gabarito, <code>eval/analise.py</code>), estímulos e coleta do painel <strong>ainda não aconteceram</strong>.
+      Na apresentação: "experimento desenhado e pré-registrado; coleta em andamento".</p>
+    </div>
+  </div>
+
+  <div class="hyp">
+    <div class="hyp-id">H2</div>
+    <div class="hyp-body">
+      <h3>Score prevê qualidade percebida <span class="status st-ok">matriz demonstrada</span></h3>
+      <p>Matriz de 66 pares no ground truth Rekordbox mostra que o score separa extremos
+      (1.000 vs 0.224). A <strong>correlação de Spearman com notas do painel</strong> depende da
+      mesma coleta da H1 — o breakdown por componente (harmônico/tempo) já é exposto para isso.</p>
+    </div>
+  </div>
+
+  <div class="hyp">
+    <div class="hyp-id">H3</div>
+    <div class="hyp-body">
+      <h3>Vocal falado tolera distância harmônica <span class="status st-info">confirmada na prática · exploratória</span></h3>
+      <p>Vocais declamados (típicos do funk) caem bem <strong>sem transposição</strong> mesmo com salto
+      harmônico — implementado como <code>transpor=False</code> / <code>--sem-transposicao</code> (com teste).
+      Rebaixada de hipótese estatística a achado exploratório, o que é um achado legítimo em si.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="numeros">
+  <p class="h2-eyebrow">Parte 5</p>
+  <h2>Números para ter na ponta da língua</h2>
+  <div class="stats">
+    <div class="stat"><div class="v">0.50 / 0.35 / 0.15</div><div class="k">pesos do score: harmônico / tempo / energia</div></div>
+    <div class="stat"><div class="v">8%</div><div class="k">stretch máximo antes da nota de tempo zerar</div></div>
+    <div class="stat"><div class="v">16 compassos</div><div class="k">clipe vocal fixo (~30 s @ 130 BPM), igual nos 2 braços</div></div>
+    <div class="stat"><div class="v">[−6, +6] st</div><div class="k">faixa de transposição, preservando o modo do vocal</div></div>
+    <div class="stat"><div class="v">110 Hz</div><div class="k">passa-altas no vocal (Butterworth)</div></div>
+    <div class="stat"><div class="v">−3.5 dB</div><div class="k">ducking máximo da base sob o vocal</div></div>
+    <div class="stat"><div class="v">~8.2 dB SDR</div><div class="k">separação htdemucs — bleed constante entre braços</div></div>
+    <div class="stat"><div class="v">12 → 66</div><div class="k">faixas → pares na matriz de compatibilidade (H2)</div></div>
+    <div class="stat"><div class="v">102</div><div class="k">testes (alignment 36 · compat 30 · synthesis 15 · eval 12 · key 7 · smoke 2)</div></div>
+    <div class="stat"><div class="v">~1–2 min</div><div class="k">geração de um mashup na RTX 2060 (jobs assíncronos, 1 worker)</div></div>
+    <div class="stat"><div class="v">5 níveis</div><div class="k">cascata de fallback (0 = ideal … 4 = baseline)</div></div>
+    <div class="stat"><div class="v">torch 2.0.1</div><div class="k">+ CUDA 11.7 + NATTEN 0.14.6 compilado (imagem blend-ai:torch20)</div></div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="produto">
+  <p class="h2-eyebrow">Parte 6</p>
+  <h2>O produto que aparece na demo</h2>
+  <div class="grid-2">
+    <div class="card">
+      <h3>SPA React (web/) — tela única, 3 estados</h3>
+      <p style="color:var(--ink-soft)"><strong style="color:var(--ink)">Seleção:</strong> dois decks (A = vocal, B = base), drag-drop
+      de mp3/wav/flac, waveform renderizado no cliente (wavesurfer). Toggle
+      <strong style="color:var(--ink)">Estrutura-aware / Baseline</strong> — único knob exposto.<br>
+      <strong style="color:var(--ink)">Processing:</strong> EQ animado + checklist das 6 etapas + cronômetro (polling de 1.5&nbsp;s).<br>
+      <strong style="color:var(--ink)">Result:</strong> waveform do mashup com as <strong style="color:var(--ink)">regiões da estrutura da base e
+      a janela do vocal por cima</strong> — a assinatura visual da H1 — mais score, stretch,
+      transposição, BPMs, tons, e export .wav.</p>
+    </div>
+    <div class="card">
+      <h3>API FastAPI (api/server.py)</h3>
+      <p style="color:var(--ink-soft)">Jobs assíncronos em memória, <strong style="color:var(--ink)">1 worker serializado por lock</strong>
+      (a GPU não comporta 2 Demucs):</p>
+      <p class="mono" style="font-size:13px; line-height:2">
+        POST /api/mashups?modo=proposto|baseline → 202 {job_id}<br>
+        GET&nbsp; /api/jobs/{id} → status, etapa, resultado<br>
+        GET&nbsp; /api/jobs/{id}/audio.wav<br>
+        GET&nbsp; /api/health
+      </p>
+      <p style="color:var(--ink-soft)">A SPA compilada (<code>web/dist</code>) é servida estática pelo próprio FastAPI — 1 container só.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Como rodar (demo ao vivo ou plano B)</h3>
+    <pre><code><span class="cm"># subir tudo (SPA + API na :8000, GPU via nvidia-container-toolkit)</span>
+docker compose build
+docker compose up          <span class="cm"># → http://localhost:8000</span>
+
+<span class="cm"># receita reproduzível do exemplo Tatsch × Broken Hill (CLI, dentro do container)</span>
+python scripts/gera_par.py --vocal &lt;A.mp3&gt; --base &lt;B.mp3&gt; \
+  --modos proposto --sem-transposicao \
+  --vocal-in 59 --vocal-dur 14.8 --vocal-offset 46
+
+<span class="cm"># matriz de compatibilidade H2 (não precisa de GPU)</span>
+python eval/matriz_compatibilidade.py</code></pre>
+    <p style="color:var(--ink-soft); font-size:14.5px">Plano B da demo: os .wav já gerados em <code>data/out/</code> — nunca depender só da geração ao vivo (~1–2 min + risco do daemon do Docker cair sob pressão de memória).</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="slides">
+  <p class="h2-eyebrow">Parte 7</p>
+  <h2>Roteiro dos 10 slides — o que dizer em cada</h2>
+  <p class="h2-sub">Fonte: <code>docs/apresentacao-conteudo.md</code> → deck em <code>docs/apresentacao-blend-ai.html</code> / <code>.pdf</code>.</p>
+
+  <div class="slides">
+    <div class="slide"><span class="slide-n"></span><div><h3>Capa</h3><p>Blend AI — mashup automático guiado por estrutura musical. Nome da equipe, PAV/UFG.</p></div></div>
+    <div class="slide"><span class="slide-n"></span><div><h3>Motivação</h3><p>Mashup = vocal de A sobre instrumental de B. O DJ casa tempo, tom e estrutura de ouvido; a pergunta é se dá para automatizar as três coisas.</p></div></div>
+    <div class="slide"><span class="slide-n"></span><div><h3>Pergunta científica + H1</h3><p>Alinhar com consciência de estrutura produz mashups mais musicais que só BPM + tom + primeiro downbeat? (às cegas, Wilcoxon).</p></div></div>
+    <div class="slide"><span class="slide-n"></span><div><h3>Pipeline em etapas</h3><p>O diagrama da Parte 1 deste guia. Marcar o ★: score + alinhamento são a contribuição; o resto é base resolvida na literatura que nós integramos.</p></div></div>
+    <div class="slide"><span class="slide-n"></span><div><h3>Três conceitos de PAV</h3><p>Separação de fontes (Demucs), downbeat/compasso (allin1) e roda Camelot (harmonia de DJ). Explicar cada um em 30 s — aqui entra o conteúdo da disciplina.</p></div></div>
+    <div class="slide"><span class="slide-n"></span><div><h3>★ Contribuição central</h3><p>"Break com break, drop com drop": escolha de seção pontuada + ancoragem no downbeat + cascata de 5 níveis de fallback que garante nunca ficar pior que o baseline.</p></div></div>
+    <div class="slide"><span class="slide-n"></span><div><h3>Hipóteses e testes</h3><p>H1 Wilcoxon pareado · H2 Spearman score×notas · H3 análise dos casos de salto harmônico. Estado honesto da Parte 4.</p></div></div>
+    <div class="slide"><span class="slide-n"></span><div><h3>Prova de conceito</h3><p>Pipeline roda ponta-a-ponta na RTX 2060; matriz 12 faixas / 66 pares; exemplo sonoro Tatsch × Broken Hill. <strong>Aqui toca o áudio.</strong></p></div></div>
+    <div class="slide"><span class="slide-n"></span><div><h3>Dois achados</h3><p>(1) H3: vocal falado dispensa transposição em saltos grandes. (2) "IA sugere, DJ ancora": a ancoragem automática é o elo fraco; knobs manuais no motor viraram feature, não gambiarra.</p></div></div>
+    <div class="slide"><span class="slide-n"></span><div><h3>Fechamento / futuro</h3><p>Coleta do painel H1, vocal_fit por áudio, UI "ver + ancorar na mão", prompt por LLM como casca. Visão: motor de análise reutilizável (biblioteca, setlists, stems).</p></div></div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="faq">
+  <p class="h2-eyebrow">Parte 8</p>
+  <h2>Perguntas prováveis da banca</h2>
+  <p class="h2-sub">Clique para revisar a resposta curta. Treine falar cada uma em ~20 segundos.</p>
+
+  <div class="faq">
+    <details>
+      <summary>Como vocês garantem que a H1 mede só o efeito da estrutura?</summary>
+      <div class="a">Os dois braços compartilham separação, BPM ratio, transposição e — crucial — <strong>o mesmo trecho vocal de 16 compassos</strong>. A única diferença é a colocação (qual seção + qual downbeat). Esse confundidor existia numa versão anterior e foi corrigido explicitamente.</div>
+    </details>
+    <details>
+      <summary>E se a detecção de estrutura (allin1) falhar numa faixa?</summary>
+      <div class="a">Cascata de 5 níveis de fallback. No pior caso (nível 4: sem downbeats ou BPM inválido) o proposto <strong>degrada exatamente para o baseline</strong> — por construção, nunca fica pior. Nos testes na RTX 2060 o allin1 opera no nível 0.</div>
+    </details>
+    <details>
+      <summary>A separação não está no estado da arte (htdemucs vs htdemucs_ft). Isso compromete?</summary>
+      <div class="a">Não para as hipóteses: o bleed (~8.2 dB SDR) é <strong>constante entre os dois braços</strong> — afeta igualmente baseline e proposto, então não confunde a comparação. O <code>_ft</code> (bag de 4 modelos) simplesmente não cabe na infra de 1 GPU de consumo, restrição declarada do trabalho.</div>
+    </details>
+    <details>
+      <summary>Por que Wilcoxon e não teste t?</summary>
+      <div class="a">Notas Likert 1–5 são <strong>ordinais e pareadas</strong> (mesmo par avaliado nos 2 braços), sem garantia de normalidade. Wilcoxon signed-rank é o teste pareado não-paramétrico padrão; reportamos rank-biserial como tamanho de efeito. Para H2, Spearman (monotônica, não assume linearidade) com IC95% via bootstrap.</div>
+    </details>
+    <details>
+      <summary>E se o Essentia errar o tom?</summary>
+      <div class="a">No experimento, o tom do <strong>Rekordbox entra como silver standard</strong> (ground truth em CSV) — a detecção automática é validada contra ele no domínio-alvo. No produto usamos o perfil EDMA, recomendado para eletrônica. E a H3 mostra que, para vocal falado, errar o tom importa menos do que se pensava.</div>
+    </details>
+    <details>
+      <summary>Funk a ~130 BPM sobre house a ~126: o stretch não degrada o vocal?</summary>
+      <div class="a">O componente de tempo escolhe <code>f ∈ {0.5, 1, 2}</code> (half/double-time) minimizando o stretch, e o experimento MVP controla BPM (pares com 1–3 de diferença) justamente para isolar o efeito da estrutura. Funk × house com gap grande é demo de robustez, não o experimento.</div>
+    </details>
+    <details>
+      <summary>O componente de energia do score não é usado. Por quê?</summary>
+      <div class="a">Implementado e testado, mas o pipeline ainda não injeta as métricas de energia — os pesos são <strong>renormalizados</strong> (≈ 0.588 / 0.412) e essa variante determinística é a pré-registrada no protocolo. Dizer isso de frente é melhor do que a banca descobrir.</div>
+    </details>
+    <details>
+      <summary>Qual é a novidade, se Demucs / beat tracking / pitch-shift já existem?</summary>
+      <div class="a">Exatamente por isso o ★: a contribuição é (1) o <strong>alinhamento estrutura-aware</strong> — escolher a seção certa e ancorar no compasso certo, com fallback gracioso — e (2) o <strong>score de compatibilidade</strong> que prevê qualidade antes de renderizar. Os blocos resolvidos são tratados como infraestrutura, como manda o enunciado (nível de desafio real ≠ reinventar a roda).</div>
+    </details>
+    <details>
+      <summary>Por que a ancoragem manual (vocal_in/dur/offset) se o sistema é automático?</summary>
+      <div class="a">Achado de produto: a sugestão automática acerta a seção, mas a frase exata é decisão musical — <strong>"IA sugere, DJ ancora"</strong>. Os knobs existem no motor e na CLI (foi assim que o exemplo da demo foi gerado); expô-los na UI é o próximo passo. Vira força na narrativa: humano-no-loop, não falha.</div>
+    </details>
+  </div>
+</section>
+
+<p class="footer-note">
+  Gerado a partir do estado real do repositório em 2026-07-02 (branch main, commit 8b22cf4) —
+  src/blend/*.py · api/server.py · web/src · eval/ · docs/apresentacao-conteudo.md
+</p>
+
+</div>
+
+</body>
+</html>
